@@ -1,0 +1,19 @@
+baseURL = 'http://blog.htchz.cc/'
+languageCode = 'zh-CN'
+title = '土川的自留地'
+theme = "terminal"
+[permalinks]
+  post = "/posts/:slug"
+
+# 主导航菜单
+name="首页"
+url="/"
+weight="1"
+[[menu.main]]
+name="博文"
+url="/posts"
+weight="2"
+[[menu.main]]
+name="关于"
+url="/about"
+weight="4"
