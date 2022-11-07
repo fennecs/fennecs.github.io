@@ -102,7 +102,7 @@ JVM 是通过进入、退出对象监视器( Monitor ，即下文的monitor reco
 ![upload successful](/images/pasted-129.png)
 
 这个关键字可以形成三种锁：偏向锁、轻量级锁、重量锁，三种锁依次升级，不能降级，直到解锁。
-> 接下来会涉及到jvm中对象的markword（对象头），关于对象头看[对象的组成](./2006878642.html)
+> 接下来会涉及到jvm中对象的markword（对象头），关于对象头看[对象的组成](/2006878642.html)
 
 ![upload successful](/images/pasted-130.png)
 

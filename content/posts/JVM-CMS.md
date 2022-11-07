@@ -31,7 +31,7 @@ CMS以获取最小停顿时间为目的。在一些对响应时间有很高要�
 
 ## 并发标记
 * 继续运行用户线程，标记活动和用户线程并发进行
-* 由**初始标记**出发，所有可到达的对象都在本阶段中标记，使用[三色标记法](./2394647798.html)标记。
+* 由**初始标记**出发，所有可到达的对象都在本阶段中标记，使用[三色标记法](/2394647798.html)标记。
 
 ## 预清理
 * 由于**重标记**会导致stw，所以这个阶段目的为了尽可能减少stw时间
@@ -61,15 +61,15 @@ public static void main(String[] args) {
   Animal q = p.child;
   p.child = null;
   q.bark();
-}  
+}
 ```
 在第4行cms开始标记，`p.child`是白色对象，在`p.child`被标记前，将`p.child`赋值给q，由于赋值局部变量表没有写屏障，所以这个`p.child`不会被记录下来，而`p.child`的引用又在第6行解除（如果是SATB是会记录的），然后假设此时并发标记完成。这样**remark**阶段就需要重新扫一遍根，否则就会漏掉这个白色对象。
 
 > 与之相对的，G1的STAB**remark**不用重新扫描根集，因为G1比较**狠**，只要是对象被删除就记录下来。
 
 ## 可中断的预清理（abortable preclean）
-![](../images/20200317182036.png)
-![](../images/20200317201125.png)
+![](/images/20200317182036.png)
+![](/images/20200317201125.png)
 这个过程其实就是不停循环执行预清理。开启条件是：
 1. Eden的使用空间大于**CMSScheduleRemarkEdenSizeThreshold**，这个参数的默认值是2M；
 2. Eden的使用率小于**CMSScheduleRemarkEdenPenetration**，这个参数的默认值是50%。
@@ -100,7 +100,7 @@ CMS清除内部状态，为下次回收做准备。
 # 存在的问题
 * 费cpu，gc线程和用户线程并发
 * `card`解决了漏标的问题，但解决不了误标，误标的即浮动垃圾，需要下一轮GC才能清楚。
-* 由于垃圾回收阶段用户线程仍在执行，必需预留出内存空间给用户线程使用。因此不能像其他回收器那样，等到老年代满了再进行GC。有个`CMSInitiatingOccupancyFraction`设置一个百分比，表明达到这个值就进行垃圾回收，见[《JVM-MinorGC与FullGC》](./527051980.html)的`concurrent mode failure`关键字
+* 由于垃圾回收阶段用户线程仍在执行，必需预留出内存空间给用户线程使用。因此不能像其他回收器那样，等到老年代满了再进行GC。有个`CMSInitiatingOccupancyFraction`设置一个百分比，表明达到这个值就进行垃圾回收，见[《JVM-MinorGC与FullGC》](/527051980.html)的`concurrent mode failure`关键字
 * 上面并发造成的，接下来是‘标记-清除’算法造成的，这个算法造成空间碎片，虚拟机还提供了另外一个参数`CMSFullGCsBeforeCompaction`，用于设置执行多少次不压缩的Full GC后，跟着来一次带压缩的（默认为0，每次进入Full GC时都进行碎片整理）。
 
 # 参考

@@ -7,7 +7,7 @@ slug: 2436052280
 date: 2019-03-25 11:44:00
 ---
 # 前言
-之前一篇[[Java基础]Java的SPI机制](./754409717.html)讲到Java spi的缺陷是在查找所需实现的时候，会实例化无关的实现，那么这篇看看Dubbo是怎么规避这个问题的。
+之前一篇[[Java基础]Java的SPI机制](/754409717.html)讲到Java spi的缺陷是在查找所需实现的时候，会实例化无关的实现，那么这篇看看Dubbo是怎么规避这个问题的。
 
 # Dubbo spi的特点
 ```java
@@ -78,10 +78,10 @@ public void dubboSpiTest() {
 }
 ```
 输出
-    
+
     2019-03-23 12:20:50.681  INFO   --- [           main] com.htc.learning.api.impl.DefaultRunner  : I'm a DefaultRunner
     2019-03-23 12:20:50.681  INFO   --- [           main] com.htc.learning.api.impl.ExcitedRunner  : I'm a ExcitedRunner!
-    
+
 # 原理
 ## getExtensionLoader
 Dubbo spi与java spi的`ServiceLoader`对应的，是`ExtensionLoader`。不同于`ServiceLoader`的`load`方法每次返回都要实例化一个对象，`ExtensionLoader`每次`getExtensionLoader`会进行缓存。
@@ -264,7 +264,7 @@ java spi的配置只能放在一个目录`META-INF/services/`,dubbo spi的配置
 
 ```java
 private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) {
-    // fileName = 文件夹路径 + type 全限定名 
+    // fileName = 文件夹路径 + type 全限定名
     String fileName = dir + type.getName();
     try {
         Enumeration<java.net.URL> urls;
@@ -289,7 +289,7 @@ private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir) {
 ```
 接下来“真·读取配置文件”
 ```java
-private void loadResource(Map<String, Class<?>> extensionClasses, 
+private void loadResource(Map<String, Class<?>> extensionClasses,
 	ClassLoader classLoader, java.net.URL resourceURL) {
     try {
         BufferedReader reader = new BufferedReader(
@@ -316,7 +316,7 @@ private void loadResource(Map<String, Class<?>> extensionClasses,
                         }
                         if (line.length() > 0) {
                             // 加载类，并通过 loadClass 方法对类进行缓存
-                            loadClass(extensionClasses, resourceURL, 
+                            loadClass(extensionClasses, resourceURL,
                                       Class.forName(line, true, classLoader), name);
                         }
                     } catch (Throwable t) {
@@ -520,7 +520,7 @@ public interface Protocol {
 
     @Adaptive
     <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException;
-    
+
     void destroy();
 }
 ```

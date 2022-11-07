@@ -1,7 +1,7 @@
 ---
 title: '[Mysql]漫游undo log'
 tags:
-  - 
+  -
 categories:
   - Mysql
 slug: 1791523990
@@ -21,7 +21,7 @@ undo log和redo log和binlog，这三个log是mysql及innodb的关键。这三�
 
 网上大多都是讲undo log能做什么，但没几篇讲清楚undo log组织结构。innodb最小存储粒度是页`page`，而页就分为`FIL_PAGE_INDEX`索引页（索引即数据）和`FIL_PAGE_UNDO_LOG`undo页。
 
-部分概念是关于MVCC的，需要配合[[Mysql]Innodb的快照读实现](./3647734067.html#undo-log)食用，本文不做讨论。
+部分概念是关于MVCC的，需要配合[[Mysql]Innodb的快照读实现](/3647734067.html#undo-log)食用，本文不做讨论。
 
 undo log就是个历史版本，落盘后不和redo log存在一起。
 # 表空间
@@ -41,7 +41,7 @@ Rollback Segment（rseg）称为回滚段。Mysql5.6之前undo默认记录到系
 
 一个undo log segment其实是一个页叫`undo log header page`，有INSERT/UPDATE两个类型。这个页有一项内容`TRX_UNDO_PAGE_LIST`是一个链表，即undo page链表。
 
-![](../images/20200510231756.png)
+![](/images/20200510231756.png)
 
 简单来说，结构是这样的：
 
@@ -52,12 +52,12 @@ Rollback Segment（rseg）称为回滚段。Mysql5.6之前undo默认记录到系
       * undo record
       * ...
 
-> A collection of undo logs. Undo log segments exists within rollback segments. An undo log segment might contain undo logs from multiple transactions. An undo log segment can only be used by one transaction at a time but can be reused after it is released at transaction commit or rollback——[mysql#undo_log_segment](https://dev.mysql.com/doc/refman/5.7/en/glossary.html#glos_undo_log_segment) 
+> A collection of undo logs. Undo log segments exists within rollback segments. An undo log segment might contain undo logs from multiple transactions. An undo log segment can only be used by one transaction at a time but can be reused after it is released at transaction commit or rollback——[mysql#undo_log_segment](https://dev.mysql.com/doc/refman/5.7/en/glossary.html#glos_undo_log_segment)
 
 一个rollback Segment可以被多个事务使用。而一个undo log segment只能被一个事务占有。由于undo log segment区分插入和更新，又区分临时表和普通表，所以一个事务至多占有**四**个undo log segment。
 
 ## 头
-![](../images/20200510231756.png)
+![](/images/20200510231756.png)
 这张图里，
 * Undo Log Segment Header：是undo log的第一页，不存放record
 * undo log header：图里`Undo Log Segment Header`的`TRX_UNDO_LAST_LOG`属性指向了一个undo page，每一个undo page都有undo log header描述这个undo page的信息。
@@ -84,13 +84,13 @@ redo log有许多种类型，这里是一种type为`MLOG_UNDO_INSERT`的日志�
 ## 写入undo log
 
 insert的undo record长这样
-![](../images/20200510183601.png)
+![](/images/20200510183601.png)
 * type_cmpl：undo log类型，purge时用
 * undo no：事务编号
 * table id：表id
 
 update的undo record长这样
-![](../images/20200510185016.png)
+![](/images/20200510185016.png)
 * DATA_ROLL_PTR：该行对应的前一个历史版本的指针，从而构建一个历史版本的链表
 * type_cmpl：undo log类型，辅助purge线程清理
 * (posN,lenN,u_old_colN)[]：字段旧值，只需要记录被更新的字段
@@ -135,13 +135,13 @@ MVCC那篇讲过，每行记录都有三个隐藏字段，所以记录的`old_tr
 2. purge阶段：这个发生在事务提交后，将记录移动到垃圾链表，等待复用。
 
 垃圾链表是指数据页上的一个属性`PAGE_FREE`，指向一个链表的头节点，可以参阅文章底部的链接。
-  
+
 删除属于更新，所以他们的undo log是同一个数据结构，不过删除类型的undo log少了n_updated和字段旧值，以及被更新的二级索引。
 
 
 ## 事务prepare
 事务开始的阶段，需要将undo log header page的事务状态`TRX_UNDO_STATE`设置为`TRX_UNDO_PREPARED`
-![](../images/20200512183520.png)
+![](/images/20200512183520.png)
 ## 事务提交
 
 先说一下history list，`show engine innodb status`执行这个命令我们可以看到history list

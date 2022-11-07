@@ -38,7 +38,7 @@ typedef struct redisObject {
                             * and most significant 16 bits access time). */
     int refcount;
     void *ptr;
-} robj; 
+} robj;
 ```
 在redis里，一个key对应一个redisObject，redisObject有个属性是`lru`，长度为`LRU_BITS`24位。
 
@@ -76,7 +76,7 @@ unsigned long long estimateObjectIdleTime(robj *o) {
 
     // 这里面有个问题，加一个周期求的也是不准的，比如现在一个时钟是7点，另一个时钟是5点，现在确定7点的时钟比5点的时钟早，
     // 但是我们不能确定，这个7点是1天前的7点，还是两天前的7点
-    
+
     // redis只加了一个周期，因此这个idletime不是非常准确，但是至少保证，求出的idletime不会大于真实的idletime，如果一个key的idletime大，那他就是真的大！
     } else {
         return (lruclock + (LRU_CLOCK_MAX - o->lru)) * LRU_CLOCK_RESOLUTION;
@@ -90,7 +90,7 @@ innodb的最小存储单位是页，对于那些加载过的数据页，innodb�
 
 假如innodb使用标准LRU，那么当一次大量数据加载后，将会淘汰掉buffer pool里的缓存，把这次的大量数据加载进缓存中。如果这一次大量数据只被使用一次，那么就老数据就白白地被淘汰了。
 
-![](../images/20201013213338.png)
+![](/images/20201013213338.png)
 
 innodb把缓存列表分为两部分，一部分是年轻代，占5/8，一部分是老年代，占3/8（垃圾回收乱入）。
 1. 新数据页插入时，插在老年代的head位置。

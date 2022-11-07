@@ -7,14 +7,14 @@ categories:
 slug: 2735588161
 date: 2020-05-01 23:53:39
 ---
-之前买的GGC家的HK vps，从去年开始电信访问一直丢包，丢包率一上去，带宽再大速度也是提不上去（[[网络]TCP拥塞控制那些事](./3284953854.html)）。
+之前买的GGC家的HK vps，从去年开始电信访问一直丢包，丢包率一上去，带宽再大速度也是提不上去（[[网络]TCP拥塞控制那些事](/3284953854.html)）。
 
 于是想到买个nat机中转一下流量。
 
-![](../images/20200502003159.png)
+![](/images/20200502003159.png)
 (2核384内存，适合用来中转流量)
 
-![](../images/20200502000957.png)
+![](/images/20200502000957.png)
 
 
 # iptables端口转发
@@ -55,7 +55,7 @@ iptables -nL -t nat
 
 最后一步，在nat控制面板的**NAT转发策略**创建策略，创建一个映射到该机器10086的策略，就能拿到公网ip和端口了。
 
-![](../images/20200502002852.png)
+![](/images/20200502002852.png)
 
 # firewall端口转发
 firewall的会简单一些
@@ -63,7 +63,7 @@ firewall的会简单一些
 # 允许防火墙伪装IP
 firewall-cmd --add-masquerade --permanent
 # 检查是否允许伪装IP
-firewall-cmd --query-masquerade 
+firewall-cmd --query-masquerade
 # 添加转发规则
 firewall-cmd --permanent --zone=public --add-forward-port=port=10086:proto=tcp:toport=10010:toaddr=104.104.104.104
 # 开放监听端口

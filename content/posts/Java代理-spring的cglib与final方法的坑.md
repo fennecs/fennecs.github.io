@@ -50,10 +50,10 @@ public void testCglib() {
 如果我们调用代理对象的`runner.run("Tony")`，日志输出的将会是“I'm Tony”而不是“I'm hijacked!”。
 
 而Spring使用`org.springframework.aop.framework.CglibAopProxy`对目标对象进行代理，我的程序在调用一个fianl方法的时候，报了一个NPE异常，debug进去一看，成员变量`logger`居然是`null`。
-![](../images/20200112142005.png)
+![](/images/20200112142005.png)
 事实上，Spring的`CglibAopProxy`生成的代理对象的成员变量都是null，因为从Spring设计上，代理类只负责增强逻辑，然后再调用目标对象的方法，所以并没有初始化成员变量的必要。
 
-![](../images/20200112142143.png)
+![](/images/20200112142143.png)
 
 实际上我也不需要这个对象被代理。。手动new一个对象就正常了。
 

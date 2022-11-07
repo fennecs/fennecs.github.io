@@ -69,7 +69,7 @@ T2:y=x+1,x=y+1;
 每个阶段的队列长度不是一致的，可能Flush阶段的leader会在Sync阶段追加进前一个队列，成为follower，但是follower永远是follower。
 
 网上的这个图很形象。
-![](../images/20200605174715.png)
+![](/images/20200605174715.png)
 
 在Sync stage阶段，有两个参数可以影响组提交：
 * `binlog_group_commit_sync_delay=N`:这个参数表明在Sync stage等待多少μs后可以刷盘，等的越久，就越可能合并后来的队列，一次刷更多日志，但是相应的，事务响应就变慢。

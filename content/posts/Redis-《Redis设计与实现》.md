@@ -42,7 +42,7 @@ static unsigned long _dictNextPower(unsigned long size)
     }
 }
 ```
-很简单的循环，不过有人给他提出可以用位运算：[传送门](https://github.com/antirez/redis/pull/3833)，java里用的也是这个算法，[HashMap的tableSizeFor()](./2353864749.html)。
+很简单的循环，不过有人给他提出可以用位运算：[传送门](https://github.com/antirez/redis/pull/3833)，java里用的也是这个算法，[HashMap的tableSizeFor()](/2353864749.html)。
 
 作者说不错，但是没必要，这种位运算的魔法对现实来说都是假的，只会把代码搞复杂😮
 
@@ -72,7 +72,7 @@ typedef struct redisObject {
                             * and most significant 16 bits access time). */
     int refcount;
     void *ptr;
-} robj; 
+} robj;
 ```
 通过redis.conf的设置，`unsigned lru:LRU_BITS`的有不同的表示。当表示lfu时，这个字段用8位来当作计数器，用16位当时间戳，16位长度只有两个字节，所以存的时间是以秒位单位。
 

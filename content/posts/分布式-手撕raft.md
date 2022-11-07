@@ -14,7 +14,7 @@ Raft作为一个简单的一致性算法，实现一下还是挺好玩的。代�
 
 # 实现
 参照raft论文和lab提示，整体利用channel作为事件驱动、mutex保证线程安全，写出一个raft算法骨架还是比较容易的。不过在跑test的时候，小小的细节不对就会导致`test failed`。
-![](../images/20191004005135.png)
+![](/images/20191004005135.png)
 **raft-lab**提供了17个test，检验了各种情况下的一致性，模拟了各种奇葩网络变化（网络变成这样还是跑路吧），要求4分钟内pass。
 
 ## 数据结构
@@ -160,7 +160,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				case <-time.After(time.Duration(rand.Int63()%300+500) * time.Millisecond): //随机投票超时是必须的，为了防止票被瓜分完。
 				case <-rf.heartbeatCh:
 					rf.state = Follower
-				case <-rf.leaderCh: 
+				case <-rf.leaderCh:
 				}
 			}
 
@@ -307,7 +307,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 }
 ```
-1，进行投票后要发送心跳``rf.heartbeatCh <- true``，不然节点会由`Follower`超时，从而使集群选举循环下去。  
+1，进行投票后要发送心跳``rf.heartbeatCh <- true``，不然节点会由`Follower`超时，从而使集群选举循环下去。
 2，判断日志是否较新要满足其中一个条件：一，term较大，二，term一样，但日志index比较大
 ## 日志复制与接收
 ### broadcastAppendEntries 广播日志/心跳
@@ -377,7 +377,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 func (rf *Raft) handleAppendEntriesReply(args *AppendEntriesArgs, reply *AppendEntriesReply, i int) {
 	rf.Lock()
     defer rf.Unlock()
-    
+
 	if rf.state != Leader { // 获取锁后校验自己的状态
 		return
 	}
@@ -392,7 +392,7 @@ func (rf *Raft) handleAppendEntriesReply(args *AppendEntriesArgs, reply *AppendE
 		rf.persist()
 		return
     }
-    
+
 	if reply.Success {
         // len(args.Entries)  == 0 就是心跳了，不用处理
 		if len(args.Entries) > 0 {

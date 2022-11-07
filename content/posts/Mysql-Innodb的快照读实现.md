@@ -40,7 +40,7 @@ Innodb每一行都有三个隐藏字段，分别是`DB_ROW_ID`、`DB_TRX_ID`、`
 `update`、`delete`的**undo log**需要保留（可见`delete`只是逻辑删除，其实也是个`update`操作，逻辑删除后由后台线程清理）。
 
 下面假设有一条记录如下，**column_1**、**column_2**初始值为1和2。
-![](../images/20191212171021.png)
+![](/images/20191212171021.png)
 假设这时有个三个事务ABC，A,C事务开始，对这条记录的查询结果如下：
 
 |  column_1|column_2  |
@@ -52,12 +52,12 @@ Innodb每一行都有三个隐藏字段，分别是`DB_ROW_ID`、`DB_TRX_ID`、`
 
 > 虽然数据行和**undo log**画的一样，但实际**undo log**有自己的数据结构。
 
-![](../images/20191212171048.png)
+![](/images/20191212171048.png)
 A事务提交，释放X锁。
 
 接着B开启事务，执行更新**column_2**为22；
 具体过程是：给记录加X锁，复制A事务更新完的记录为**undo_log_2**，然后再将记录的**column_2**改为22，`DB_TRX_ID`为B，`DB_ROLL_PTR`指向前一个版本。
-![](../images/20191212171106.png)
+![](/images/20191212171106.png)
 然后B事务提交。
 
 注意！！如果A事务没有提交，X锁是不会释放的，那么B事务对这行记录执行update为了获取X锁会阻塞住的，而**MVCC**标准各个版本应该是不会相互影响的，所以说**Innodb事务快照读不是严格的MVCC实现**。
@@ -75,11 +75,11 @@ A事务提交，释放X锁。
 RC和RR的区别就是，RR在第一次查询会创建新的**read view**，RC是每次查询都创建**read view**。
 
 > 如果记录上的`trx_id`小于`read_view_t->up_limit_id`，则说明这条记录的最后修改在readview创建之前，因此这条记录可以被看见。
-> 
+>
 > 如果记录上的`trx_id`大于等于`read_view_t->low_limit_id`，则说明这条记录的最后修改在readview创建之后，因此这条记录肯定不可以被看见。
-> 
+>
 > 如果记录上的`trx_id`在`up_limit_id`和`low_limit_id`之间，且`trx_id`在`read_view_t->descriptors`之中，则表示这条记录的最后修改是在readview创建之后，被另外一个活跃事务所修改，所以这条记录也不可以被看见。如果`trx_id`不在`read_view_t->descriptors`之中，则表示这条记录的最后修改在readview创建之前，所以可以看到。
-> 
+>
 > 基于上述判断，如果记录不可见，则尝试使用undo去构建老的版本(row_vers_build_for_consistent_read)，直到找到可以被看见的记录或者解析完所有的undo。
 
 上一节里，假设事务隔离级别是**RR**，事务id大小顺序是：X < C < A < B < D(D是未开启的事务Id)，事务都是读写事务（只读事务不会加入**read view**）

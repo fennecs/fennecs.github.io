@@ -22,11 +22,11 @@ istio两种注入模式，一种是执行`istioctl kube-inject`将目标`deploym
 执行`kubectl describe replicaset productpage-v1-596598f447`，显示**failed calling webhook "sidecar-injector.istio.io": Post https://istio-sidecar-injector.istio-system.svc:443/inject?timeout=30s: context deadline exceeded`**，
 
 查看`apiserver`的日志，一直提示
-    
+
      "sidecar-injector.istio.io": Post https://istio-sidecar-injector.istio-system.svc:443/inject?timeout=30s: net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)
 
 查看`controller-manager`的日志，一直提示
-    
+
     Event(v1.ObjectReference{Kind:"HorizontalPodAutoscaler", Namespace:"istio-system", Name:"istio-telemetry", UID:"da322eac-127a-4c78-89e6-db614d697949", APIVersion:"autoscaling/v2beta2", ResourceVersion:"10847941", FieldPath:""}): type: 'Warning' reason: 'FailedComputeMetricsReplicas' invalid metrics (1 invalid out of 1), first error is: failed to get cpu utilization: unable to get metrics for resource cpu: no metrics returned from resource metrics API
 
 看起来是在说找不到**metrics api**？
@@ -35,8 +35,8 @@ istio两种注入模式，一种是执行`istioctl kube-inject`将目标`deploym
 
 最后找到一篇[博客](https://www.yp14.cn/2019/12/12/Istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%87%BA%E9%94%99%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/)，里面提到
 
-![](../images/20200227005407.png)
+![](/images/20200227005407.png)
 于是乖乖安装`metrics-server`，然后注入`sidecar`的`pod`就成功创建了 = = 其实一早就看到关于**metrics api**的报错，但是我认为那是收集监控数据的，于是没鸟他，还是图样了。
 
 # demo
-![](../images/20200227012503.png)
+![](/images/20200227012503.png)

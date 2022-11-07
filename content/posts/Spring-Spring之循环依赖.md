@@ -46,7 +46,7 @@ spring中的循环依赖只有当
 		// Eagerly check singleton cache for manually registered singletons.
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
-			...// 日志代码
+			.// 日志代码
 			bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
 		}
 
@@ -162,7 +162,7 @@ spring中的循环依赖只有当
 			}
 		}
 
-		...// type校验
+		.// type校验
 		return (T) bean;
 	}
 ```
@@ -202,13 +202,13 @@ private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<Str
 
 /** 也是缓存创建的单例对象，功能和singletonObjects不一样，
 在bean构造成功之后，属性初始化之前会把对象放入到这里，
-主要是用于解决属性注入的循环引用: bean name --> bean instance 
+主要是用于解决属性注入的循环引用: bean name --> bean instance
 */
 private final Map<String, Object> earlySingletonObjects = new HashMap<String, Object>(16);
 
 /** 记录在创建单例对象中循环依赖的问题，还记得Prototype中又记录创建过程中依赖的map吗？
 在Prototype中只要出现了循环依赖就抛出异常，而在单例中会尝试解决 */
-private final Set<String> singletonsCurrentlyInCreation = 
+private final Set<String> singletonsCurrentlyInCreation =
 		Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>(16));
 ```
 现在看`getSingleton(beanName, new ObjectFactory<Object>()`的实现
@@ -226,7 +226,7 @@ private final Set<String> singletonsCurrentlyInCreation =
 				}
                 //日志代码
 				...
-                
+
                 //把当前beanName加入到singletonsCurrentlyInCreation中
 				beforeSingletonCreation(beanName);
 				boolean newSingleton = false;
@@ -240,9 +240,9 @@ private final Set<String> singletonsCurrentlyInCreation =
 				} catch(...){
                 	...
                 }
-				
+
                 //从singletonsCurrentlyInCreation中删除beanName
-				finally { 
+				finally {
 					if (recordSuppressedExceptions) {
 						this.suppressedExceptions = null;
 					}
@@ -283,7 +283,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         */
                 instanceWrapper = createBeanInstance(beanName, mbd, args);
     }
-    
+
 
    //如果当前是单例，并且allowCircularReferences为true(默认就是true，除非我们不希望Spring帮我们解决)
     boolean earlySingletonExposure = (mbd.isSingleton() && this.allowCircularReferences &&
@@ -302,7 +302,7 @@ protected Object doCreateBean(final String beanName, final RootBeanDefinition mb
         });
     }
 
-    
+
     Object exposedObject = bean;
     try {
         //自动注入属性
@@ -357,7 +357,7 @@ public class BeanB {
       ↑     ↓
       |  beanB (field private com.htc.testbean.xunhuanbean.BeanA com.htc.testbean.xunhuanbean.BeanB.beanC)
       └─────┘
-      
+
 按照类名的字典排序，BeanA是会比BeanB先被扫描到的，那么先构造BeanA，BeanA明显构造需要BeanB依赖，初始化BeanB，BeanA没构造完成无法注入，于是GG。
-    
+
 如果BeanA改名为BeanC，就可以解决问题，不过这种谁先谁后是不可靠的，勿写这种代码。

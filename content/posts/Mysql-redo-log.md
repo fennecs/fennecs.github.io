@@ -49,11 +49,11 @@ redo log在硬盘中是分成多块来存储的，以`ib_logfile[number]`命名�
 有了redo log之后，对于一行数据，首先更新**buffer pool**（在这之前还有undo log），然后再写入log buffer。
 
 # 组织结构
-由于redo记录的是物理变更，比如在“第100表空间第100页偏移量1024写入4个字节balabala”，而不是描述第几行改成什么样，一行记录变更涉及的物理页可能有很多，所以可能产生一条redo log，也有可能是多条redo log，这个和undo log不同。 
+由于redo记录的是物理变更，比如在“第100表空间第100页偏移量1024写入4个字节balabala”，而不是描述第几行改成什么样，一行记录变更涉及的物理页可能有很多，所以可能产生一条redo log，也有可能是多条redo log，这个和undo log不同。
 
 ## redo log
 这是一条redo log的通用结构
-![](../images/20200525182526.png)
+![](/images/20200525182526.png)
 * type：redo log的类型，可能是基础类型，也可能是复杂类型
 * Space ID：表空间id
 * page number：页号
@@ -65,13 +65,13 @@ redo log在硬盘中是分成多块来存储的，以`ib_logfile[number]`命名�
 
 ## log block
 组织redo log的是log block，一个log block是存储redo log的基本单位，和页有点类似。
-![](../images/20200526000820.png)
+![](/images/20200526000820.png)
 * log block header：存放block信息
 * log block body：存放多条redo log
 * log block trailer：存放block的校验值，用于正确性校验
-  
+
 log buffer和log file都是以log block为基本操作单位，redo log在log block里顺序写入。
-![](../images/20200526001104.png)
+![](/images/20200526001104.png)
 
 ## mtr
 Mini-Transaction，即mtr，
