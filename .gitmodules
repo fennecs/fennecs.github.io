@@ -1,9 +1,12 @@
 [submodule "themes/hugo-toigian"]
 	path = themes/hugo-toigian
 	url = https://github.com/ntk148v/hugo-toigian.git
+    ignore = dirty
 [submodule "themes/terminal"]
 	path = themes/terminal
 	url = https://github.com/panr/hugo-theme-terminal.git
+    ignore = dirty
 [submodule "themes/hugo-PaperMod"]
 	path = themes/hugo-PaperMod
 	url = git@github.com:adityatelange/hugo-PaperMod.git
+    ignore = dirty
