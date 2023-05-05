@@ -6,7 +6,9 @@ slug: f7e2562e
 ---
 计算机系统基础，冲！
 
-选择路线: x86
+选择路线: riscv32
+版本：ics2022
+地址：<https://github.com/fennecs/ics2022> (private)
 
 照着讲义`git clone`之后，一通折腾，最后执行`make ARCH=native run mainargs=mario`成功运行，but
 
@@ -30,7 +32,7 @@ Initializing video...
 
 ![](/images/20221113115300.png)
 
-不过怎么没有声音呢？虽然讲义说不是必选，可是作为一个计(CTRL)算(C)机(V)科(工)学(程)家(师)，你既然提了可以做到，我就必须得开这个声音了，由于用的`xrdp`，于是去(github)[https://github.com/neutrinolabs/xrdp]一波，看到README.md有这样的内容:
+不过怎么没有声音呢？虽然讲义说不是必选，可是作为一个计(^)算(C)机(V)科(工)学(程)家(师)，你既然提了可以做到，我就必须得开这个声音了，远程协议用的`xrdp`，于是去[github](https://github.com/neutrinolabs/xrdp)一波，看到README.md有这样的内容:
 
 ![](/images/20221113220237.png)
 
@@ -46,20 +48,20 @@ chmod: cannot access '/etc/sudoers.d/nopasswd-ohuang': No such file or directory
 /wrapped_script: 55: lsb_release: not found
 /wrapped_script: 55: lsb_release: not found
 ```
-在[issue](https://github.com/neutrinolabs/pulseaudio-module-xrdp/issues/73)里找到了解决办法，是apt源的原因，轻量云用的源是腾讯的镜像源。
+在[issue](https://github.com/neutrinolabs/pulseaudio-module-xrdp/issues/73)里找到了解决办法，是apt源的原因，轻量云用的源是腾讯的镜像源，改为官方源就好了。
 
 `configure`的时候遇到了波浪线在双引号内无法解释的问题，命令改为`./bootstrap && ./configure PULSE_DIR=/home/$USER/pulseaudio.src`，最后`make && sudo make install`即可，执行
 ```bash
 ls $(pkg-config --variable=modlibexecdir libpulse) | grep xrdp
-显示
 ```
+显示
 ```shell
 module-xrdp-sink.la
 module-xrdp-sink.so
 module-xrdp-source.la
 module-xrdp-source.so
 ```
-重启一下xrdp，可以在声音里看到**xrdp sink**
-![](/images/20221113222651.png)
+重启一下服务器，可以在声音看到**xrdp**的字眼
+![](/images/20230505223757.png)
 
 再运行一波虚拟机，声来！
