@@ -45,9 +45,11 @@ String dump of section '.rodata':
 # 如何生成native的可执行文件
 以`/am-kernels/tests/cpu-tests/tests/string.c`为例，不同的`ARCH`传入`Makefile`后，可以用于路由到不同的`Makefile`(abstract-machine/scripts)，主要是是编译的源文件有区别。
 
-编译`ARCH=native`用的是`gcc`套件，入口就是test文件的`main`，所以`native`不会有NEMU的那些输出
+编译`ARCH=native`用的是`gcc`套件，入口就是镜像的`main`，所以`native`不会有NEMU的那些输出(其实`init_platform()` 会比`main`更早执行，因为这个函数标注了`__attribute__((constructor))`)
 
-编译`ARCH=riscv32-nemu`用的是`riscv-gnu-toolchain`，入口是NEMU的`main`。有一点要注意的是，即使你加了`-g`、`-ggdb3`选项，`x86`的`gdb`也读取不了调试信息。所以想通过`gdb`找bug的话，必须设置`ARCH=native`。
+编译`ARCH=riscv32-nemu`用的是`riscv-gnu-toolchain`，入口是NEMU的`main`，然后再从镜像作为数据，从`main`解释执行(用riscv32的方式解释)
+
+P.S. 编译`ARCH=$ISA-nemu`的镜像时，即使用了`-g`、`-ggdb3`选项，`gdb`也读取不了调试信息。想对镜像本身调试的话，只能通过NEMU的基础设施或者使用`ARCH=native`。
 
 # 这是如何实现的?
 ```c
