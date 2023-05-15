@@ -1,0 +1,35 @@
+baseURL: 'http://blog.htchz.cc/'
+languageCode: zh-CN
+title: 土川的自留地
+theme: hugo-PaperMod
+
+permalinks:
+  post: '/posts/:slug'
+  name: 首页
+  url: /
+  weight: '1'
+
+menu:
+  main:
+    - name: 博文
+      url: /posts
+      weight: '2'
+    - name: 关于
+      url: /about
+      weight: '4'
+    - name: 搜他
+      url: /search
+      weight: '5'
+
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON # is necessary
+
+params:
+  homeInfoParams:
+    Title: 土川的自留地
+    Content: Be positive, stay patient.
+  TocOpen: false
+  ShowToc: true

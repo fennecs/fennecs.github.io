@@ -1,6 +1,6 @@
 ---
 title: "PA1"
-date: 2023-03-21T00:44:20+08:00
+date: 2023-04-29T00:44:20+08:00
 draft: true
 slug: f7e2562e
 autonumbering: true
@@ -13,7 +13,7 @@ autonumbering: true
 版本：<https://nju-projectn.github.io/ics-pa-gitbook/ics2022/index.html>  
 地址：<https://github.com/fennecs/ics2022> (private)
 
-# 在愉快的PA之旅之前
+## 在愉快的PA之旅之前
 
 照着讲义`git clone`之后，一通折腾，最后执行`make ARCH=native run mainargs=mario`成功运行，but
 
@@ -71,17 +71,17 @@ module-xrdp-source.so
 
 再运行一波，声来！
 
-# 开天辟地的篇章
-## 计算机可以没有寄存器吗? (建议二周目思考)
+## 开天辟地的篇章
+### 计算机可以没有寄存器吗? (建议二周目思考)
 可以，用内存代替，但是会很慢。
 
-## 从状态机视角理解程序运行
+### 从状态机视角理解程序运行
 ![](/images/20221114001426.png)
 
 **P.S.** 转移指令只会引起PC寄存器变化
 
-# RTFSC
-## x86
+## RTFSC
+### x86
 执行`make ISA=x86 run`却跑不起来，原因是x86的cpu结构需要实现。
 
 注释提示要使用**匿名联合体**，因为`eax, ecx, edx, ebx, esp, ebp, esi, edi`这几个字段也要共用`AL`等寄存器空间。
@@ -122,24 +122,24 @@ index 6d4d9d8..3d140be 100644
  } x86_CPU_state;
 ```
 
-## 究竟要执行多久?
+### 究竟要执行多久?
 ```c
 void cpu_exec(uint64_t n);
 ```
 `cpu_exec`的函数声明如上，入参是一个无符号数，所以`-1`会转换为一个64位的正整数，这需要一个程序顺序地跑`2^64`条指令才能跑完这个循环。
 
-## 潜在的威胁 (建议二周目思考)
+### 潜在的威胁 (建议二周目思考)
 > The C Standard says that if a program has signed integer overflow its behavior is undefined.[传送门](https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html#Signed-Overflow-Examples)
 
 也就是说把负数传给无符号数是一种未定义行为，C标准是不打包票能按二进制字面量转换的（但是大部分实现都都是按二进制字面转换。
 
-## 谁来指示程序的结束?
+### 谁来指示程序的结束?
 exit()函数，在任意位置发生这个调用，操作系统会收到此信号并终止进程。
 
-## 有始有终 (建议二周目思考)
+### 有始有终 (建议二周目思考)
 (TODO)
 
-# 其他
+## 其他
 
 > Do NOT change the order of the GPRs' definitions.
 
@@ -163,14 +163,14 @@ rtlreg_t eax, ecx, edx, ebx, esp, ebp, esi, edi;
 
 ![](/images/20230326231450.png)
 
-# 表达式求值
-## 为什么printf()的输出要换行?
+## 表达式求值
+### 为什么printf()的输出要换行?
 因为`printf`是C标准库，自带了一个**buffer**，`printf`标准输出只有遇到换行符才会冲刷缓冲区。
 
-## 表达式生成器如何获得C程序的打印结果?
+### 表达式生成器如何获得C程序的打印结果?
 用`system`函数执行shell命令编译，`popen`可以获得一个管道，把运行的程序的标准输出，作为本程序的标准输入，`fscanf`解析标准输入，便得到C程序的打印结果。
 
-## 如何生成长表达式, 同时不会使buf溢出?
+### 如何生成长表达式, 同时不会使buf溢出?
 （首先，我没有实现考虑随机插入空格，因为有点鸡肋。）
 
 我们要保证buf不溢出，就要做好长度限制。
@@ -267,10 +267,10 @@ case2: 至少需要`NUMBER_LENGTH * 2 + 1`个字符
   }
 
 ```
-## 为什么要使用无符号类型? (建议二周目思考) 
+### 为什么要使用无符号类型? (建议二周目思考) 
 结合下面的问题，感觉和0有关，但是说不出来。
 
-## 除0的确切行为
+### 除0的确切行为
 除数为0在linux下会`coredump`，macos会返回随机数(undefined行为)
 
 在riscv手册中，关于除以0的说法如下:
@@ -279,60 +279,49 @@ case2: 至少需要`NUMBER_LENGTH * 2 + 1`个字符
 
 ![](/images/20230515123305.png) 
 
-## 过滤除0行为的表达式
+### 过滤除0行为的表达式
 `fscanf`可以返回parse成功个数，而除以0在linux下会导致`coredump`，这种情况下我们生成测试用例的code在`stdout`是没有输出的，`fscanf`会饭回`-1`，所以可以根据这个行为过滤。
 
-# 监视点
-## 温故而知新
+## 监视点
+### 温故而知新
 static是静态变量，加在全局变量上可以保证声明只局限于此文件。（其实就是把全局变量私有，防止别的代码直接修改，这个是和java不一样的。
 
-## 你会如何测试你的监视点实现?
+### 你会如何测试你的监视点实现?
 单步运行，使用默认image，当寄存器值变化的时候，程序是否按预期停下来。
 
-## 强大的GDB
+### 强大的GDB
 可以用`bt`命令看到现场堆栈，通过`f`命令跳转栈帧，通过`p`命令打印现场参数
 
-## 如何提高断点的效率 (建议二周目思考)
+### 如何提高断点的效率 (建议二周目思考)
 NEMU的断点机制是每个指令都要check一遍，这无疑至少执行了两倍指令，现在cpu都会提供用于debug的指令，比如`x86`的`int3`，这是一个单字节指令。当`gdb`打断点的时候会把代码行对应的pc的指令替换为`int3`，程序会和普通程序一样执行，但是跑到`int3`指令的时候，会陷入内核进入阻塞，产生中断编号为3的中断。
 
-## 一点也不能长?
+### 一点也不能长?
 断点的本质是替换程序的二进制，如果指令多于一个字节，可能会有其他线程跳到第二个被替换的指令的位置，会发生什么咱也不知道。
 
-## 随心所欲的断点
+### 随心所欲的断点
 这是未定义行为，大部分指令一上来就是`opcode`了，如果`int3`嵌到指令中间部分，可能会被解释为操作数或者寄存器，所以这是不行的。
 
-## NEMU的前世今生
+### NEMU的前世今生
 具体看看[这个](https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1/)
 
-# 如何阅读手册
-# 必答题
+## 如何阅读手册
+### 必答题
+#### x86
+* CF: Carry Flag，(人称穿越火线(误))，用于存储进位。See [3.8 Flag Control Instructions](https://nju-projectn.github.io/i386-manual/s02_03.htm)
+* ModR/M: A byte, known as the modR/M byte, follows the opcode and specifies whether the operand is in a register or in memory。即用一个额外的字节实现复杂的操作数，See[17.2 Instruction Format](https://nju-projectn.github.io/i386-manual/s17_02.htm)
+* MOV: intel指令格式是`MOV <to> <from>`. See [MOV -- Move Data](https://nju-projectn.github.io/i386-manual/MOV.htm)
+  
+#### riscv32
+* 6种`R`(r2r),`I`(i2r),`S`,`B`,`U`,`J`(其中SB,UJ只是立即数的编码不同)，一看就比x86的简单n倍
+* LUI (load upper immediate) is used to build 32-bit constants and uses the U-type format. LUI places the U-immediate value in the top 20 bits of the destination register rd, filling in the lowest 12 bits with zeros.
+* ![](/images/20230425110744.png)
 
-* <u>送分题</u> 我选择的ISA是：**riscv32**.
-* <u>程序是个状态机</u> 画出计算1+2+...+100的程序的状态机: [传送门](../303ab75d)
-* <u>RTFM</u> 理解了科学查阅手册的方法之后, 请你尝试在你选择的ISA手册中查阅以下问题所在的位置, 把需要阅读的范围写到你的实验报告里面:
-  * x86
-    * EFLAGS寄存器中的CF位是什么意思?
-    * ModR/M字节是什么?
-    * mov指令的具体格式是怎么样的?
-  * **答**：
-    * CF: Carry Flag，(人称穿越火线(误))，用于存储进位。See [3.8 Flag Control Instructions](https://nju-projectn.github.io/i386-manual/s02_03.htm)
-    * ModR/M: A byte, known as the modR/M byte, follows the opcode and specifies whether the operand is in a register or in memory。即用一个额外的字节实现复杂的操作数，See[17.2 Instruction Format](https://nju-projectn.github.io/i386-manual/s17_02.htm)
-    * MOV: intel指令格式是`MOV <to> <from>`. See [MOV -- Move Data](https://nju-projectn.github.io/i386-manual/MOV.htm)
-  * [riscv32](https://riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf)
-    * riscv32有哪几种指令格式?
-    * LUI指令的行为是什么?
-    * mstatus寄存器的结构是怎么样的?
-  * **答**
-    * 6种`R`(r2r),`I`(i2r),`S`,`B`,`U`,`J`(其中SB,UJ只是立即数的编码不同)，一看就比x86的简单n倍
-    * LUI (load upper immediate) is used to build 32-bit constants and uses the U-type format. LUI places the U-immediate value in the top 20 bits of the destination register rd, filling in the lowest 12 bits with zeros.
-    * ![](/images/20230425110744.png)
-
-# Immediate Encoding Variants
+### Immediate Encoding Variants
 `S`和`B`,`U`和`J`是同一种指令，只是后者立即数范围更大。可以看到立即数的bit排列不是顺序的，官方文档说：
 
 > Although more complex implementations might have separate adders for branch and jump calculations and so would not bene t from keeping the location of immediate bits constant across types of instruction, we wanted to reduce the hardware cost of the simplest implementations. By rotating bits in the instruction encoding of B and J immediates instead of using dynamic hardware muxes to multiply the immediate by 2, we reduce instruction signal fanout and immediate mux costs by around a factor of 2. The scrambled immediate encoding will add negligible time to static or ahead-of-time compilation. For dynamic generation of instructions, there is some small additional overhead, but the most common short forward branches have straightforward immediate encodings.
 
 大致意思就是保证bit位置不变能提高速度。
 
-# 结尾
-PA1结束，进入PA2
+## 结尾
+PA1结束，进入[PA2](/posts/ics-pa/3792c313)

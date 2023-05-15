@@ -1,8 +1,8 @@
-title: '[Java基础]synchronized关键字'
+---
+title: "[Java基础]synchronized关键字"
 author: 土川
 tags:
   - multithread
-  - ''
 categories:
   - Java基础
 slug: 589479039
