@@ -159,7 +159,7 @@ rtlreg_t eax, ecx, edx, ebx, esp, ebp, esi, edi;
 
 为什么要按编码排列呢，因为使用寄存器的opcode(操作码)是按寄存器的编码顺序排列的
 
-比如`MOV`指令，**b0-b7**使用的是`byte register`，**b8-bf**是用的是`32-bit register`，模拟器进行寄存器寻址时只要用`s->opcode & 0x7`就可以取得寄存器的下标。
+比如`MOV`指令，**b0~b7**使用的是`byte register`，**b8~bf**是用的是`32-bit register`，模拟器进行寄存器寻址时只要用`s->opcode & 0x7`就可以取得寄存器的下标。
 
 ![](/images/20230326231450.png)
 
