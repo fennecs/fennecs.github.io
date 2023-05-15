@@ -2,6 +2,7 @@ baseURL = 'http://blog.htchz.cc/'
 languageCode = 'zh-CN'
 title = '土川的自留地'
 theme = "hugo-PaperMod"
+
 [permalinks]
   post = "/posts/:slug"
 
