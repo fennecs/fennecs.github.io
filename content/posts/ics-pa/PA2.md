@@ -1,7 +1,7 @@
 ---
 title: "PA2"
 date: 2023-03-25T00:38:48+08:00
-draft: true
+draft: false
 slug: 3792c313
 ---
 ## 不停计算的机器
