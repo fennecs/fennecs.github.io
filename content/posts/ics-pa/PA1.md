@@ -280,7 +280,7 @@ case2: 至少需要`NUMBER_LENGTH * 2 + 1`个字符
 ![](/images/20230515123305.png) 
 
 ### 过滤除0行为的表达式
-`fscanf`可以返回parse成功个数，而除以0在linux下会导致`coredump`，这种情况下我们生成测试用例的code在`stdout`是没有输出的，`fscanf`会饭回`-1`，所以可以根据这个行为过滤。
+`fscanf`可以返回parse成功个数，而除以0在linux下会导致`coredump`，这种情况下我们生成测试用例的code在`stdout`是没有输出的，`fscanf`会返回`-1`，所以可以根据这个行为过滤。
 
 ## 监视点
 ### 温故而知新
