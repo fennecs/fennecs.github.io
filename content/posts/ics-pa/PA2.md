@@ -327,7 +327,7 @@ nested-nemu: io_write(AM_GPU_FBDRAW, ...) -> write to FB_ADDR ->
 
 ### 必答题
 #### 编译与链接(static inline)
-`static inline`声明，如果函数成功内联，起作用的只会是`inline`，而`static inline`是为了代码健壮性，防止有些编译器拒绝内联。这种情况`static`可以兜底把函数编译为`local function`。所以去掉`inline`不会报错，去掉`static`不一定会报错，去掉两者一定报错。证明TODO
+`static inline`声明，如果函数成功内联，起作用的只会是`inline`，而`static inline`是为了代码健壮性，防止有些编译器拒绝内联。这种情况`static`可以兜底把函数编译为`local function`。所以去掉`inline`不会报错，去掉`static`不一定会报错，去掉两者一定报错。
   
 ### 编译与链接()
 1. 通过`readelf`可以统计到`dummy`的个数，带有默认镜像的`riscv32-nemu`是34个
