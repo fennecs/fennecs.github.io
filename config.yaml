@@ -11,13 +11,13 @@ permalinks:
 
 menu:
   main:
-    - name: 博文
+    - name: posts
       url: /posts
       weight: '2'
-    - name: 关于
+    - name: about
       url: /about
       weight: '4'
-    - name: 搜他
+    - name: search
       url: /search
       weight: '5'
 
