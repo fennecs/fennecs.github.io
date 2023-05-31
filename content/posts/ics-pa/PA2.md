@@ -85,6 +85,9 @@ x   | 34 |
 同有符号加法一样，有符号乘法也是把负数用补码表示，免去了单独计算符号位的问题，这也是有符号运算和无符号计算的区别，无符号计算开箱即用，有符号数需要先对负数转补码（正数的补码即原码，无需转换）
 
 ## 程序, 运行时环境与AM
+### 这又能怎么样呢
+这种设计原则其实是`DIP`[依赖反转原则](https://en.wikipedia.org/wiki/Dependency_inversion_principle)，遵循这个原则就可以做到解耦。具体地，高层次不应该引入低层次的逻辑，高层次和低层次之间的沟通应该通过抽象来完成，在这个场景下这个抽象就是`halt()`。
+
 ### 为什么要有AM? (建议二周目思考)
 > All problems in computer science can be solved by another level of [indirection](https://en.wikipedia.org/wiki/Indirection)
 
@@ -188,7 +191,7 @@ P.S. 编译`ARCH=$ISA-nemu`的镜像时，即使用了`-g`、`-ggdb3`选项，`g
 
 如果`_end`是设备寄存器，设备会收到乱序数据甚至没收到数据。
 
-P.S. `volatile`的语义在`C`和`java`里不完全一样，`C`里面的`volatile`语义简单的多。
+P.S. `volatile`的语义在`C`和`java`里不完全一样，`C`里面的`volatile`语义简单的多，比如不保证**内存可见性**
 
 ### 理解mainargs
 #### $ISA-nemu

@@ -3,7 +3,6 @@ title: "PA1"
 date: 2023-04-29T00:44:20+08:00
 draft: false
 slug: f7e2562e
-autonumbering: true
 ---
 做完这个就专升本了😊
 
