@@ -66,13 +66,13 @@ x   | 34 |
 ### `HIT BAD TRAP`
 各种编码的小马虎，都可能会导向`HIT BAD TRAP`，所以手册指令描述应该看仔细，可以少走弯路。
 
-~~另外就是对指令的不熟悉也会踩坑。但我们锻炼的能力就是如何在不熟悉的前提下编程，~~
+第四节的**基础设施**有`DiffTest`，可以每次执行一条指令就和**大腿**对比，如果不一致就报错。
 
-~~当遇到`HIT BAD TRAP`，去读懂全部指令逻辑的话成本太高（又不是搞逆向的），可以查看**nemu-log.txt**(build目录下)，大约定位到`check`失败的条件，顺着条件回溯，找到`eflags`不符合预期的pc，从而定位到哪条指令实现有问题~~
+但是，`DiffTest`没法对比内存（理论上可以对比，但是不现实）。所以在`load`出现`DiffTest`失败时，排查是比较困难的，有可能是在`load`行为出错，也有可能是`store`行为出错。
 
-~~具体怎么做呢，基础设施的实现就可以帮到你了～~~
+所以指令实现要谨慎，否则一出错就得查找好久。
 
-看来PA要完整地看。。。第四节的**基础设施**有`DiffTest`。。。
+真的出错时，先检查`load`指令，否则就用`watchpoint`大法检查`store`行为是否正确。
 
 ### 解析指令
 写了个`riscv`命令用于解析riscv指令，效果如下：
@@ -169,6 +169,8 @@ P.S. 编译`ARCH=$ISA-nemu`的镜像时，即使用了`-g`、`-ggdb3`选项，`g
 > Don't recognize built-in functions that do not begin with __builtin_ as prefix.
 
 事实上，如果你没有提供内置函数的实现，那么链接时还是会到`glibc`查找实现。
+
+这里有个`va_arg`提取`char`的坑：https://stackoverflow.com/questions/28054194/char-type-in-va-arg
 
 ### 奇怪的错误码
 可能注册了信号处理函数，执行了`exit(1)`（待求证

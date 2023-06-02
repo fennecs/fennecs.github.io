@@ -103,6 +103,14 @@ index 2f582fe..0a8e950 100644
 ### 实现loader
 具体`loader`应该做什么，讲义已经贴出[传送门](https://www.tenouk.com/ModuleW.html)(W.7  PROCESS LOADING)
 
+其实过程很简单，`ELF`从两个视角组织一个可执行文件：
+1. 一个是面向链接过程的`section`视角，这个视角提供了用于链接与重定位的信息，例如符号表
+1. 一个是面向执行的`segment`视角，这个视角提供了用于加载可执行文件的信息，我们要从这下手
+
+`segment`在`ELF`里被抽象为`Program Headers`，我们只要先提取`ELF`的`Elf32_Ehdr`/`Elf64_Ehdr`，得到`Elf32_Phdr`/`Elf64_Phdr`的偏移量。
+
+再根据偏移量提取`Phdr`数组，如果满足`phdr.p_type == PT_LOAD`，就需要装载到内存对应的位置，并将`[VirtAddr + FileSiz, VirtAddr + MemSiz)`清零。
+
 ### 检查ELF文件的魔数
 ```shell
 ❯ readelf -a ramdisk.img
@@ -130,3 +138,115 @@ assert(*(uint32_t *)elf->e_ident == 0x464c457f);
 # error Unsupported ISA
 #endif
 ```
+
+### 系统调用的必要性
+不是必须，因为批处理系统的程序是串行执行的，不会存在资源占用情况。但是直接暴露给应用程序，降低了程序的可移植性。
+
+### 识别系统调用
+注意：异常号和系统调用号是两个东西。`mcause`寄存器存放的是异常号，`a7`存放的是系统调用号。
+
+`__am_irq_handle`负责识别异常，`do_event`负责识别系统调用。
+
+### 实现SYS_yield系统调用
+
+### RISC-V系统调用号的传递
+因为`a0`~`a7`是`calling convention`里传递参数的寄存器，如果用`a0`传递系统调用号会增加设计复杂度。
+
+`man syscall`可以看到`Architecture calling conventions`
+
+### 实现strace
+在`do_syscall`打印即可，为了方便控制，我在`nanos-lite/src/syscall.h`加了个宏开关
+
+```c
+// #define STRACE
+
+#ifdef STRACE
+
+#define SLog(format, ...) \
+  printf("\33[1;35m[%s,%d,%s] " format "\33[0m\n", \
+      __FILE__, __LINE__, __func__, ## __VA_ARGS__)
+
+#else
+
+#define SLog(format, ...)
+
+#endif
+```
+
+### 在Nanos-lite上运行Hello world
+`Newlib`帮我们做好`format`工作了，所以我们专心实现`write`功能，因为`fd`目前只有`1`和`2`，我们加上`assert`防止后面忘了实现
+
+```c
+static int write(int fd, void *buf, size_t count) {
+
+  assert(fd == 1 || fd == 2);
+
+  assert(count > 0);
+  
+  for (int i = 0; i < count; i++) {
+    putch(*((char*)buf + i));
+  }
+
+  return count;
+}
+```
+成功运行
+
+![](/images/20230602000430.png)
+
+### 实现堆区管理
+```c
+extern char end;
+static intptr_t cur_brk = (intptr_t)&end;
+
+void *_sbrk(intptr_t increment) {
+  
+  intptr_t old_brk = cur_brk;
+  intptr_t new_brk = old_brk + increment;
+  if (_syscall_(SYS_brk, new_brk, 0, 0) != 0) {
+    return (void*)-1; 
+  }
+  cur_brk = new_brk;
+  return (void*)old_brk;
+}
+```
+注意: 数据段结束位置可以用`end`或者`_end`
+
+### 必答题(需要在实验报告中回答) - hello程序是什么, 它从而何来, 要到哪里去
+> 我们知道`navy-apps/tests/hello/hello.c`只是一个C源文件, 它会被编译链接成一个ELF文件. 那么, hello程序一开始在哪里? 它是怎么出现内存中的? 为什么会出现在目前的内存位置? 它的第一条指令在哪里? 究竟是怎么执行到它的第一条指令的? hello程序在不断地打印字符串, 每一个字符又是经历了什么才会最终出现在终端上?
+
+我们运行hello程序的时候，实际是在运行`nanos-lite`。
+
+首先我们需要在`navy-apps`里编译好一个镜像（就是一坨`ELF`二进制），然后cp到`nanos-lite`指定位置(`build`目录下)用于构建`nanos-lite`。
+
+接着`make ARCH=$ISA-nemu`的时候会根据`nanos-lite/src/resources.S`重新生成`.o`文件，这个过程是通过对`.S`文件执行`touch`命令实现的。
+
+`resources.S`文件声明了两个符号`ramdisk_start`,`ramdisk_end`，我们就是根据这个位置找到`ELF`文件实现`loader`。
+
+`load`行为过后，代码就加载到内存的**预期位置**了，第一条指令也就是**预期位置**的指令。
+
+打印字符从`printf`开始(这是Newlib实现的，不是我们AM里的`klib`实现了)。
+
+开启`strace`日志，
+
+```shell
+[/home/ohuang/GitProjects/ics2022/nanos-lite/src/loader.c,56,naive_uload] Jump to entry = 0x83004e74
+Hello World!
+[/home/ohuang/GitProjects/ics2022/nanos-lite/src/syscall.c,38,do_syscall] sys_write(1, 830056fc, 13)
+[/home/ohuang/GitProjects/ics2022/nanos-lite/src/syscall.c,42,do_syscall] sys_brk(83006cf0)
+[/home/ohuang/GitProjects/ics2022/nanos-lite/src/syscall.c,42,do_syscall] sys_brk(83007000)
+Hello World from Navy-apps for the 2th time!
+[/home/ohuang/GitProjects/ics2022/nanos-lite/src/syscall.c,38,do_syscall] sys_write(1, 830068e0, 45)
+Hello World from Navy-apps for the 3th time!
+```
+`printf`是带缓冲的，我们可以看到`printf`触发了`sbrk`系统调用申请了一块堆内存。
+
+进行`format`行为之后，接下来是会调用`write`系统调用，发生异常，执行流交给操作系统，由操作系统把字符打印到终端上。
+
+### 土川的思考
+系统调用的`strace`用到了`printf`，我们知道了`printf`会触发系统调用，那么这会不会导致死循环？
+
+答案是不会，`strace`用到的`printf`是AM的`klib`实现。
+
+### 支持多个ELF的ftrace
+下次一定。
