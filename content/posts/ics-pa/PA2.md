@@ -91,12 +91,10 @@ x   | 34 |
 ### 为什么要有AM? (建议二周目思考)
 > All problems in computer science can be solved by another level of [indirection](https://en.wikipedia.org/wiki/Indirection)
 
-AM提供一个runtime，充当客户程序和目标架构的中间层，这个目标架构可以是`$ISA-nemu`，可以是`native`。
+AM提供提供了访问硬件的api以及一个简单的`stdlib`实现，充当了客户程序和目标架构的中间层，这个目标架构可以是`$ISA-nemu`，可以是`native`。
 
-以`klib`为例，用`x86-gcc`编译的程序，动态链接的`stdlib`是`x86`架构的。如果用`riscv-gnu-toolchain`把程序链接到`x86`的`stdlib`，一个elf就会出现两种ABI，好比我们rpc是两种协议在跑，如果没有中间层，我想这是跑不起来的。
-
-所以AM需要提供标准库的运行环境，需重新编译`glibc`到目标架构，这样最终的镜像才能正常运行（当然具体实现你可以直接把`glibc`的源码copy过来🤓）
-
+你可以基于AM移植其他程序，甚至移植一个操作系统（nanos-lite）。移植的程序不用管具体架构，只需要调用AM
+硬件api和klib即可。
 
 > vmware也是虚拟机，为什么我们使用时不需要重新编一个iso镜像？因为vmware没有跨isa。如果跨了isa，你想在m1的mac上运行一个x86程序，通过vmware是不行的，而通过交叉编译和[qemu](https://www.qemu.org/)你就可以做到。
 
@@ -160,7 +158,7 @@ P.S. 编译`ARCH=$ISA-nemu`的镜像时，即使用了`-g`、`-ggdb3`选项，`g
 // abstract-machine/klib/src/string.c
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 ```
-这一行的意思是，如果选了非`native`架构，或`native`+`klib`，就要用自定义的`stdlib`实现
+这一行的意思是，如果选择了非`native`架构，或选择`native`+`klib`，就要用自定义的`stdlib`实现
 
 为什么定义了就能覆盖`glibc`实现?
 
@@ -171,6 +169,8 @@ P.S. 编译`ARCH=$ISA-nemu`的镜像时，即使用了`-g`、`-ggdb3`选项，`g
 事实上，如果你没有提供内置函数的实现，那么链接时还是会到`glibc`查找实现。
 
 这里有个`va_arg`提取`char`的坑：https://stackoverflow.com/questions/28054194/char-type-in-va-arg
+
+> 其实`klib`实现的不够贴切标准也不重要，因为最终运行仙剑的时候用到的`stdlib`并不是我们这个`klib`🤓，当然，基本的功能还是需要实现的。
 
 ### 奇怪的错误码
 可能注册了信号处理函数，执行了`exit(1)`（待求证

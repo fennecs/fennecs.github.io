@@ -8,7 +8,9 @@ slug: aa5960ea
 <!--more-->
 ## 穿越时空的旅程
 ### 特殊的原因? (建议二周目思考)
-TODO: 母鸡
+> 这些程序状态(x86的eflags, cs, eip; mips32的epc, status, cause; riscv32的mepc, mstatus, mcause)必须由硬件来保存吗? 能否通过软件来保存? 为什么?
+
+这些是实时性很高的东西，会被频繁访问到，如果放软件里性能就太差了，每条指令都得去访存。
 
 ### 另一个UB
 栈大小可以在链接脚本`abstract-machine/scripts/linker.ld`里面找到。
@@ -138,9 +140,17 @@ assert(*(uint32_t *)elf->e_ident == 0x464c457f);
 # error Unsupported ISA
 #endif
 ```
+### 将Nanos-lite编译到native
+既然是`native`，解释器就不是`nemu`了，镜像也不是`riscv32`了，但是你运行之后，还是还能看到`strace`日志，说明这一切都是解耦的！
+
+还记得`trap.S`里的`+4`行为吗，如果这个动作是放在`nanos-lite`里实现的，你在不同架构之间切换就会遇到编译失败的问题。举个例子，`riscv`的`Context`有`mepc`，但是`native`是没有的。
+
+所以`nanos-lite`的实现应该是架构无关的，我们切换到`native`后，就可以专心用`gdb`调试我们的`nanos-lite`实现了
 
 ### 系统调用的必要性
-不是必须，因为批处理系统的程序是串行执行的，不会存在资源占用情况。但是直接暴露给应用程序，降低了程序的可移植性。
+不是必须，因为批处理系统的程序是串行执行的，不会存在资源抢占情况。
+
+但是直接暴露给应用程序仍有些不妥，最主要的就是降低了程序的可移植性，比如你在`nanos-lite`上运行的程序，无法在真机运行，反之亦然。
 
 ### 识别系统调用
 注意：异常号和系统调用号是两个东西。`mcause`寄存器存放的是异常号，`a7`存放的是系统调用号。
@@ -250,3 +260,366 @@ Hello World from Navy-apps for the 3th time!
 
 ### 支持多个ELF的ftrace
 下次一定。
+
+## 文件系统
+### 文件偏移量和用户程序
+把偏移量放在文件记录表中，会导致多次打开同一个文件都是同一个偏移量，不过这里约定多次打开文件都是同一个fd，也就无所谓了。
+
+### 让loader使用文件
+给文件加个`open_offset`
+```diff
+diff --git a/nanos-lite/src/fs.c b/nanos-lite/src/fs.c
+index a9d2670..b9f634f 100644
+--- a/nanos-lite/src/fs.c
++++ b/nanos-lite/src/fs.c
+@@ -9,6 +9,7 @@ typedef struct {
+   size_t disk_offset;
+   ReadFn read;
+   WriteFn write;
++  size_t open_offset;
+ } Finfo;
+```
+
+最后`loader`的代码为
+
+```c
+static uintptr_t loader(PCB *pcb, const char *filename) {
+  
+  int fd = fs_open(filename, 0, 0);
+  if (fd < 0) {
+    panic("should not reach here");
+  }
+  Elf_Ehdr elf;
+
+  assert(fs_read(fd, &elf, sizeof(elf)) == sizeof(elf));
+
+  // 检查魔数
+  assert(*(uint32_t *)elf.e_ident == 0x464c457f);
+  // 检查ISA
+  assert(elf.e_machine == EXPECT_TYPE);
+
+  Elf_Phdr phdr;
+  for (int i = 0; i < elf.e_phnum; i++) {
+    uint32_t base = elf.e_phoff + i * elf.e_phentsize;
+
+    fs_lseek(fd, base, SEEK_SET);
+    assert(fs_read(fd, &phdr, elf.e_phentsize) == elf.e_phentsize);
+    
+    // 需要装载的段
+    if (phdr.p_type == PT_LOAD) {
+
+      char * buf_malloc = (char *)malloc(phdr.p_filesz);
+
+      fs_lseek(fd, phdr.p_offset, SEEK_SET);
+      assert(fs_read(fd, buf_malloc, phdr.p_filesz) == phdr.p_filesz);
+      
+      memcpy((void*)phdr.p_vaddr, buf_malloc, phdr.p_filesz);
+      memset((void*)phdr.p_vaddr + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+      
+      free(buf_malloc);
+    }
+  }
+
+  assert(fs_close(fd) == 0);
+  
+  return elf.e_entry;
+}
+```
+其实就是把`ramdisk_read`替换为`fs_lseek`和`fs_read`调用。
+
+### 实现完整的文件系统
+记得把用户层的系统调用补上。。。(navy-apps/libs/libos/src/syscall.c)
+
+因为用户层的系统调用默认实现是直接`exit`，TM找了我半天；恰巧我的`strace`日志是调用后才打印，所以`exit`时来不及打日志，什么都观察不到没有就退出了。
+
+这说明: 
+1. 业务开发不要随便`exit`，不得不用时请在`exit`之前打印日志。
+2. 日志先行
+
+### 把串口抽象成文件
+⚠️ `stdin`, `stdout`和`stderr`是默认打开的，所以不要在open的时候才对`Finfo`的`read`、`write`成员赋值。
+
+### 实现gettimeofday
+```c
+int main() {
+  struct timeval start, end;
+  gettimeofday(&start, NULL);
+  while (1) {
+    gettimeofday(&end, NULL);
+    // 超过0.5秒打印一次
+    if (end.tv_sec - start.tv_sec >= 0 && end.tv_usec - start.tv_usec >= 500000) {
+      printf("Hello world!\n");
+      start = end;
+    }
+  }
+  return 0;
+}
+```
+
+### 实现NDL的时钟
+修改后的`timer-test`如下：
+```c
+int main() {
+  uint32_t last_tick = NDL_GetTicks();
+  while (1) {
+    uint32_t tick = NDL_GetTicks();
+    if (tick - last_tick >= 500) {
+      printf("Hello world!\n");
+      last_tick = tick;
+    }
+  }
+  return 0;
+}
+```
+编译时别忘了在Makefile里加上`LIBS += libndl`，否则找不到`NDL`库
+
+### 把按键输入抽象成文件
+主要就是实现`AM_INPUT_KEYBRD`寄存器读取
+```c
+size_t events_read(void *buf, size_t offset, size_t len) {
+  AM_INPUT_KEYBRD_T t = io_read(AM_INPUT_KEYBRD);
+  return snprintf((char *)buf, len, "%s %s\n", 
+    t.keydown ? "kd" : "ku",
+    keyname[t.keycode]);
+}
+```
+
+### 用fopen()还是open()?
+用`open()`!上面这个需求是操作字符设备，`fopen()`通常是操作`regular file`，读取会带一个`buffer`(即读写一个字符不是百分百读写磁盘的)
+
+如果你用`fopen()`，你会发现后面`navy-apps`用`ISA=native`根本跑不起来，因为`native.cpp`里的实现就不会找这些字符设备。
+
+### 在NDL中获取屏幕大小
+主要就是实现从`AM_GPU_CONFIG`寄存器读取
+```c
+size_t dispinfo_read(void *buf, size_t offset, size_t len) {
+  AM_GPU_CONFIG_T t = io_read(AM_GPU_CONFIG);
+  return snprintf((char *)buf, len, "WIDTH:%d\nHEIGHT:%d\n", t.width, t.height);
+}
+```
+### 把VGA显存抽象成文件
+这个需求主要是参数比较难理解：梳理清楚系统屏幕(即frame buffer), `NDL_OpenCanvas()`打开的画布, 以及`NDL_DrawRect()`指示的绘制区域之间的位置关系。
+
+在`SDL`库中，有屏幕大小、窗口、画布的概念，窗口对应的`SDL_Window`，画布对应`SDL_Renderer`，一个`SDL_Window`可以关联多个`SDL_Renderer`，但同一时间只有`SDL_Renderer`活跃。
+
+回到PA
+
+`NDL_OpenCanvas(int *w, int *h)`是画布的抽象，这里窗口大小等于屏幕大小。
+
+`NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h)`，这里的`x`、`y`是基于画布原点的坐标。
+
+画布是一个“面向程序”的概念，所以我们系统调用的时候应该还原为屏幕位置。
+
+#### fb_write
+首先要知道`offset`的含义，才能计算坐标，offset是以字节为单位的，应该是屏幕的第n个像素，所以除以**屏幕宽度**，商就是y，余数就是x。
+
+因为我们光靠`offset`得不到`w`,`h`, 所以只能采取逐行写入的方式（反正vga也是逐行写入的）
+
+```c
+size_t fb_write(const void *buf, size_t offset, size_t len) {
+  AM_GPU_CONFIG_T t = io_read(AM_GPU_CONFIG);
+  int y = offset / t.width;
+  int x = offset - y * t.width;
+
+  io_write(AM_GPU_FBDRAW, x, y, (void*)buf, len, 1, true);
+  return len;
+}
+```
+#### NDL_DrawRect
+我们需要按照上面的定义计算出一个`offset`: **offset = 屏幕宽度 * 行号 + 列号**
+
+但是要注意两点，
+1. 行列是相对画布来说的，所以要加上画布的原点位置。
+2. `pixels`指针要加上偏移量
+
+```c
+void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
+  // i is row_num counter
+  int fd = open("/dev/fb", 0, 0);
+  for (int i = 0; i < h && i + y < canvas_h; i++) {
+    
+    int offset = (canvas_y + y + i) * screen_w + (canvas_x + x);
+    lseek(fd, offset, SEEK_SET);
+
+    w = canvas_w - x > w ? canvas_w - x : w;
+    write(fd, pixels + i * w, w);
+  }
+
+  close(fd);
+}
+```
+![](/images/20230606202906.png)
+
+成功绘图～就是有点慢
+
+但是当`navy-apps`使用`ISA=native`，图片变得奇怪了。。
+
+![](/images/20230608001739.png)
+
+说明我们的实现有问题，问题在哪里呢，切到`ISA=native`之后，系统调用实现就不是`nanos-lite`了，此时我们假设系统调用实现是正确的(大腿)，那就是`NDL_DrawRect`实现有误：
+
+我们系统调用的时候，使用的`offset`、`len`都是字节为单位的，但是`NDL_DrawRect`的参数，都是以像素为单位的(4bytes)，系统调用的时候，`offset`、`len`应该`*4`，而`pixels`单位和其他参数一致，所以迭代时不用修改。
+
+修改后的代码
+
+```c
+void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
+  // i is row_num counter
+  int fd = open("/dev/fb", 0, 0);
+  for (int i = 0; i < h && i + y < canvas_h; i++) {
+    
+    int offset = (canvas_y + y + i) * screen_w + (canvas_x + x);
+    lseek(fd, 4 * offset, SEEK_SET);
+
+    w = canvas_w - x > w ? canvas_w - x : w;
+    write(fd, pixels + i * w, 4 * w);
+  }
+
+  close(fd);
+}
+```
+但是新问题又来了。。`ISA=native`重新运行是正确了，换成`riscv32-nemu`又黑屏了。
+
+记得最开始实现时绘图是正确的吗，既然`NDL`实现错了，说明`nanos-lite`实现也错了。。
+
+事实上，`__am_gpu_fbdraw`的实现也是以像素为单位的，所以系统调用里又得把字节单位的变量，转为4bytes单位。
+
+修正后的`nanos-lite`实现如下:
+
+```c
+size_t fb_write(const void *buf, size_t offset, size_t len) {
+  AM_GPU_CONFIG_T t = io_read(AM_GPU_CONFIG);
+
+  offset = offset / 4;
+  int w = len / 4;
+
+  int y = offset / t.width;
+  int x = offset - y * t.width;
+
+  io_write(AM_GPU_FBDRAW, x, y, (void*)buf, w, 1, true);
+  return len;
+}
+```
+
+### 实现居中的画布
+```c
+void NDL_OpenCanvas(int *w, int *h) {
+  // NWM_APP logic ... 
+
+  if (*w == 0 && *h == 0) {
+    *w = screen_w;
+    *h = screen_h;
+  }
+
+  canvas_w = *w;
+  canvas_h = *h;
+
+  // 这里实现居中
+  canvas_x = (screen_w - canvas_w) / 2;
+  canvas_y = (screen_h - canvas_h) / 2;
+
+  assert(canvas_x + canvas_w <= screen_w);
+  assert(canvas_y + canvas_h <= screen_h);
+
+}
+```
+## 精彩纷呈的应用程序
+
+### 比较fixedpt和float
+> fixedpt和float类型的数据都是32位, 它们都可以表示2^32个不同的数. 但由于表示方法不一样, fixedpt和float能表示的数集是不一样的. 思考一下, 我们用fixedpt来模拟表示float, 这其中隐含着哪些取舍?
+
+定点数的精度比浮点数低，浮点数值集中在0附近，越远离0越稀疏
+### 神奇的fixedpt_rconst
+> 阅读fixedpt_rconst()的代码, 从表面上看, 它带有非常明显的浮点操作, 但从编译结果来看却没有任何浮点指令. 你知道其中的原因吗?
+
+原因就是编译器把浮点数干没了
+
+我们预处理一下
+```c
+((fixedpt)((1.2) * ((fixedpt)((fixedpt)1 << (32 - 24))) + ((1.2) >= 0 ? 0.5 : -0.5)));
+```
+可以看到数据类型转成了`fixedpt`, 而`fixedpt`定义是`typedef int32_t fixedpt;`
+
+`+0.5`,`-0.5`则是很常见的`round`操作，即实现**四舍五入**，加上这个偏移量，可以得到一个较接近的浮点数
+
+要注意的是，正如这个宏的名字中的const，这种转换只适合编译期的转换。如果是运行时转换，你需要实现下面的需求。
+
+### 实现更多的fixedptc API
+> 为了让大家更好地理解定点数的表示, 我们在`fixedptc.h`中去掉了一些API的实现, 你需要实现它们. 关于`fixedpt_floor()`和`fixedpt_ceil()`, 你需要严格按照`man`中`floor()`和`ceil()`的语义来实现它们, 否则在程序中用`fixedpt_floor()`代替`floor()`之后行为会产生差异, 在类似仙剑奇侠传这种规模较大的程序中, 这种差异导致的现象是非常难以理解的. 因此你也最好自己编写一些测试用例来测试你的实现.
+
+`floor()`向下取整，`ceil()`向上取整
+
+需要实现的都在这里
+
+```c
+/* Divides a fixedpt number with an integer, returns the result. */
+static inline fixedpt fixedpt_divi(fixedpt A, int B) {
+	return A / B;
+}
+
+/* Multiplies two fixedpt numbers, returns the result. */
+static inline fixedpt fixedpt_mul(fixedpt A, fixedpt B) {
+  // 多了一个2^8, 除掉他
+	return A * B  FIXEDPT_FBITS;
+}
+
+
+/* Divides two fixedpt numbers, returns the result. */
+static inline fixedpt fixedpt_div(fixedpt A, fixedpt B) {
+  // 除数变成(B / FIXEDPT_ONE)，就和 fixedpt_divi 一致了
+  return A / (B >> FIXEDPT_FBITS);
+}
+
+static inline fixedpt fixedpt_abs(fixedpt A) {
+  // 如果<0, 求相反数
+  return A < 0 ? -A : A;
+}
+
+static inline fixedpt fixedpt_floor(fixedpt A) {
+  // 没有小数，直接返回, 这个条件就包含了+0/-0了
+	if (fixedpt_fracpart(A) == 0) return A;
+  // 有小数且正数，直接取整数部分
+  if (A > 0) return A & (~FIXEDPT_FMASK);
+  // 有小数且负数，先取相反数为正数+1，再转回去
+  else return -(((-A) & (~FIXEDPT_FMASK)) + FIXEDPT_ONE);
+}
+
+static inline fixedpt fixedpt_ceil(fixedpt A) {
+  // 没有小数，直接返回, 这个条件就包含了+0/-0了
+	if (fixedpt_fracpart(A) == 0) return A;
+  // 有小数且正数，取整数部分+1
+  if (A > 0) return (A & (~FIXEDPT_FMASK)) + FIXEDPT_ONE;
+  // 有小数且负数，先取相反数，保留整数部分，取相反数
+  else return -((-A & ~FIXEDPT_FMASK));
+}
+```
+记得对负数求二补数(即取相反数)，再进行计算。
+
+### 如何将浮点变量转换成fixedpt类型?
+> 假设有一个`void *p`的指针变量, 它指向了一个32位变量, 这个变量的本质是`float`类型, 它的真值落在`fixedpt`类型可表示的范围中. 如果我们定义一个新的函数`fixedpt fixedpt_fromfloat(void *p)`, 如何在不引入浮点指令的情况下实现它?
+
+这个就要去解析`float`的结构了，浮点数标准大多数菜用`IEEE754`(TODO)
+
+### 神奇的LD_PRELOAD
+
+### Wine, WSL和运行时环境兼容
+仍旧是proxy思想
+
+### Navy中的应用程序
+#### NSlider (NJU Slider)
+前置准备参考`navy-apps/apps/nslider/README.md`，运行之后，卧槽黑屏？之前`bmp-test`明明是好的。
+
+[RTFM](https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlupdaterect.html)
+
+> If 'x', 'y', 'w' and 'h' are all 0, SDL_UpdateRect will update the entire screen.
+
+可以看到`navy-apps/apps/nslider/src/main.cpp`里的`SDL_UpdateRect(slide, 0, 0, 0, 0);`参数全是0，
+
+需要在`NDL_DrawRect`实现里加上
+```c
+if (x == 0 && y == 0 && w == 0 && h == 0) {
+    w = screen_w; // w 直接赋值屏幕宽度
+    h = screen_h; // h 直接赋值屏幕高度
+} 
+```
+
