@@ -662,9 +662,8 @@ riscv32-nemu成功运行，但是几乎不能玩，在`ISA=native`可以成功�
 > 开了`-fsanitize=address`也没任何提示，你有排查思路吗 =。=
 
 ##### 调色板
-需要更新`SDL_BlitSurface`、`SDL_FillRect`、`SDL_UpdateRect`，具体的做法是判断`SDL_Surface`参数的调色板`s->format->palette`是否为NULL，如果为NULL，和旧逻辑一样，如果不为NULL，需要在调用`NDL_DrawRect`前，按照`pixels`索引和调色板生成一个`uint32_t *pixels`数组。
+需要更新`SDL_BlitSurface`、`SDL_FillRect`、`SDL_UpdateRect`，具体的做法是判断`SDL_Surface`参数的调色板`s->format->palette`是否为NULL，如果为NULL，和旧逻辑一样，如果不为NULL，需要在调用`NDL_DrawRect`前，按照`pixels`索引和调色板生成一个新的32位`pixels`数组。
 
-下面是调色板取出的颜色结构体`SDL_Color`
 ```c
 typedef union {
   struct {
@@ -673,10 +672,13 @@ typedef union {
   uint32_t val;
 } SDL_Color;
 ```
-
-⚠️ 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的`uint32_t *pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
 ```c
-pixels[i] = color.val << 24 | color.r << 16 | color.g << 8 | color.b;
+SDL_Color color = s->format->palette->colors[pixels[??]];
+```
+
+⚠️ 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的32位`pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
+```c
+pixels[i] = color.a << 24 | color.r << 16 | color.g << 8 | color.b;
 ```
 
 修复之后，正常启动！
@@ -692,14 +694,15 @@ pixels[i] = color.val << 24 | color.r << 16 | color.g << 8 | color.b;
 
 ![](/images/20230614234343.png)
 
-OH，怎么有黑块？对比下官方`SDL`的效果，发现文字处会闪烁，那估计是`video.c`实现的有问题。
+但是为什么有黑块？黑色对应的RGB为0，所以出现黑块很可能是某些拷贝行为从画布外(超出了w,h的范围)拷贝了0的color。
 
-先把实现的三个函数的入参打印出来，然后根据参数gdb一波
+PAL的渲染过程是先调用`SDL_BlitSurface`，再调用`SDL_UpdateRect`，先看`SDL_UpdateRect`。。
 
-发现`SDL_UpdateRect`时，从调色板取出的`SDL_Color`值一直是`0`，这是黑色，已知调色板是没问题的，那么就是前面`SDL_BlitSurface`(没有`SDL_FillRect`的调用日志)
+gdb一波，很幸运，很快就发现问题，`SDL_UpdateRect`执行到函数最后一行，32位`pixels`数组的值都是0，说明拷贝的源位置不符合预期（pixels下标越界了）
 
+修复再运行，随便找个存档运行下
 
-
+![](/images/20230617005904.png)
 
 # TIPS
 假如你`navy-apps`出现`address (0x88000120) is out of bound at pc = 0x8300fe98`应该怎么办呢，首先`0x8300fe98`这个地址是镜像的PC，我们是没法对他进行调试的，这时候就应该用`addr2line`大杀器，一下子就能得到PC对应的代码行(要开启`-g`选项)
