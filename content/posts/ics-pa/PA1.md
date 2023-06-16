@@ -125,7 +125,7 @@ index 6d4d9d8..3d140be 100644
 ```c
 void cpu_exec(uint64_t n);
 ```
-`cpu_exec`的函数声明如上，入参是一个无符号数，所以`-1`会转换为一个64位的正整数，这需要一个程序顺序地跑`2^64`条指令才能跑完这个循环。
+`cpu_exec`的函数声明如上，入参是一个无符号数，所以`-1`会转换为一个64位的正整数，这需要跑`2^64`条指令才能跑完这个循环。
 
 ### 潜在的威胁 (建议二周目思考)
 > The C Standard says that if a program has signed integer overflow its behavior is undefined.[传送门](https://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html#Signed-Overflow-Examples)

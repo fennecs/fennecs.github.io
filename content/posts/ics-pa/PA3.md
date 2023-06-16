@@ -465,17 +465,14 @@ void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
 ```c
 void NDL_DrawRect(uint32_t *pixels, int x, int y, int w, int h) {
   // i is row_num counter
-  int fd = open("/dev/fb", 0, 0);
   for (int i = 0; i < h && i + y < canvas_h; i++) {
     
     int offset = (canvas_y + y + i) * screen_w + (canvas_x + x);
-    lseek(fd, 4 * offset, SEEK_SET);
+    lseek(fb_fd, 4 * offset, SEEK_SET);
 
     w = canvas_w - x > w ? canvas_w - x : w;
-    write(fd, pixels + i * w, 4 * w);
+    write(fb_fd, pixels + i * w, 4 * w);
   }
-
-  close(fd);
 }
 ```
 但是新问题又来了。。`ISA=native`重新运行是正确了，换成`riscv32-nemu`又黑屏了。
@@ -500,6 +497,7 @@ size_t fb_write(const void *buf, size_t offset, size_t len) {
   return len;
 }
 ```
+⚠️ 因为`ISA=native`每次打开文件返回的文件描述符是会变的(用了dup)，所以推荐非`regular file`只打开一次，否则有奇奇怪怪的问题。
 
 ### 实现居中的画布
 ```c
@@ -622,4 +620,86 @@ if (x == 0 && y == 0 && w == 0 && h == 0) {
     h = screen_h; // h 直接赋值屏幕高度
 } 
 ```
+⚠️ 实现`SDL_PollEvent`时记得在`NONE`的时候要返回`SDL_KEYUP`，否则，由于栈上`SDL_Event`重复使用，按键会一致处于`SDL_KEYDOWN`状态。
 
+现象就是：按一次翻页，会直接翻到第一页或最后一页。
+
+#### MENU (开机菜单)
+[RTFM](https://www.libsdl.org/release/SDL-1.2.15/docs/html/sdlblitsurface.html)即可，注意`SDL_Surface`的`pixels`是以字节为单位的，需要转成`uint32_t *`再操作指针。
+
+#### NTerm
+##### 实现内建的echo命令
+TODO
+
+#### Flappy Bird
+![](/images/20230609192943.png)
+
+riscv32-nemu成功运行，但是几乎不能玩，在`ISA=native`可以成功运行。
+
+⚠️ 游戏死亡之后没法重开，需要将`navy-apps/apps/bird/repo/src/BirdGame.cpp`里的函数`GameThink_GameOver`static变量`fading_start_time`改为`unsigned int`。
+
+#### PAL
+`ISA=native`一直报这个`core`，
+```
+#0  0x00007ffff78a179f in unlink_chunk (p=p@entry=0x555555f56d50, av=0x7ffff7a19c80 <main_arena>)
+    at ./malloc/malloc.c:1628
+#1  0x00007ffff78a46ab in _int_malloc (av=av@entry=0x7ffff7a19c80 <main_arena>, bytes=bytes@entry=40)
+    at ./malloc/malloc.c:4307
+#2  0x00007ffff78a51b9 in __GI___libc_malloc (bytes=40) at ./malloc/malloc.c:3329
+#3  0x00005555555a1c78 in SDL_CreateRGBSurface (flags=64, width=320, height=200, depth=8, Rmask=0, Gmask=0, Bmask=0, 
+    Amask=2805803502) at /home/ohuang/GitProjects/ics2022/navy-apps/libs/libminiSDL/src/video.c:103
+#4  0x0000555555593366 in VIDEO_CreateCompatibleSizedSurface (pSource=0x555555f0e940, pSize=0x0)
+    at /home/ohuang/GitProjects/ics2022/navy-apps/apps/pal/repo/src/device/video.c:757
+#5  0x00005555555932c9 in VIDEO_CreateCompatibleSurface (pSource=0x555555f0e940)
+    at /home/ohuang/GitProjects/ics2022/navy-apps/apps/pal/repo/src/device/video.c:730
+#6  0x00005555555863eb in PAL_SplashScreen ()
+    at /home/ohuang/GitProjects/ics2022/navy-apps/apps/pal/repo/src/main.c:220
+#7  0x0000555555586d11 in main (argc=1, argv=0x7fffffffdd38)
+    at /home/ohuang/GitProjects/ics2022/navy-apps/apps/pal/repo/src/main.c:472
+```
+按照讲义，`pal`使用的是8位像素，我在想有可能是8位像素操作成了32位像素导致的内存越界，进而造成的下一次`malloc`失败，不管了，死马当活马医
+
+> 开了`-fsanitize=address`也没任何提示，你有排查思路吗 =。=
+
+##### 调色板
+需要更新`SDL_BlitSurface`、`SDL_FillRect`、`SDL_UpdateRect`，具体的做法是判断`SDL_Surface`参数的调色板`s->format->palette`是否为NULL，如果为NULL，和旧逻辑一样，如果不为NULL，需要在调用`NDL_DrawRect`前，按照`pixels`索引和调色板生成一个`uint32_t *pixels`数组。
+
+下面是调色板取出的颜色结构体`SDL_Color`
+```c
+typedef union {
+  struct {
+    uint8_t r, g, b, a;
+  };
+  uint32_t val;
+} SDL_Color;
+```
+
+⚠️ 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的`uint32_t *pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
+```c
+pixels[i] = color.val << 24 | color.r << 16 | color.g << 8 | color.b;
+```
+
+修复之后，正常启动！
+
+但是，按键没反应。
+##### SDL_GetKeyState
+
+看PAL里的实现，监听键盘事件是调用`SDL_PollEvent`直到有事件过来，然后立即调用`SDL_GetKeyState`的到键盘状态。
+
+根据这个需求，我们应该需要在维护一个键盘状态数组`key_state`，在`SDL_PollEvent`有事件的时候顺便更新`key_state`。
+
+实现后，成功进入游戏！
+
+![](/images/20230614234343.png)
+
+OH，怎么有黑块？对比下官方`SDL`的效果，发现文字处会闪烁，那估计是`video.c`实现的有问题。
+
+先把实现的三个函数的入参打印出来，然后根据参数gdb一波
+
+发现`SDL_UpdateRect`时，从调色板取出的`SDL_Color`值一直是`0`，这是黑色，已知调色板是没问题的，那么就是前面`SDL_BlitSurface`(没有`SDL_FillRect`的调用日志)
+
+
+
+
+# TIPS
+假如你`navy-apps`出现`address (0x88000120) is out of bound at pc = 0x8300fe98`应该怎么办呢，首先`0x8300fe98`这个地址是镜像的PC，我们是没法对他进行调试的，这时候就应该用`addr2line`大杀器，一下子就能得到PC对应的代码行(要开启`-g`选项)
