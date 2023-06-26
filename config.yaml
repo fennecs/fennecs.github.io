@@ -11,13 +11,13 @@ permalinks:
 
 menu:
   main:
-    - name: posts
+    - name: POSTS
       url: /posts
       weight: '2'
-    - name: about
+    - name: ABOUT
       url: /about
       weight: '4'
-    - name: search
+    - name: SEARCH
       url: /search
       weight: '5'
 
