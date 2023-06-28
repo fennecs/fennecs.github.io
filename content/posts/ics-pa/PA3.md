@@ -604,6 +604,14 @@ static inline fixedpt fixedpt_ceil(fixedpt A) {
 这个就要去解析`float`的结构了，浮点数标准大多数菜用`IEEE754`(TODO)
 
 ### 神奇的LD_PRELOAD
+`LD_PRELOAD`是个环境变量，只作用于动态链接的库，用于指示加载器在装在C语言运行库之前载入`LD_PRELOAD`指定的共享链接库，达到**inject**同名函数的目的。
+
+在`navy-apps/scripts/native.mk`可以看到,
+```makefile
+run: app env
+	@LD_PRELOAD=$(NAVY_HOME)/libs/libos/build/native.so $(APP) $(mainargs)
+```
+通过劫持`fopen`、`open`等项目用到的库函数，我们可以把`path`重定向到真正的磁盘位置，再用原始的`glibc`函数去调用。
 
 ### Wine, WSL和运行时环境兼容
 仍旧是proxy思想
