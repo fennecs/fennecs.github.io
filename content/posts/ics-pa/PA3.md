@@ -1,7 +1,7 @@
 ---
 title: "PA3"
 date: 2023-05-28T08:12:10+08:00
-draft: true
+draft: false
 slug: aa5960ea
 ---
 阳康复活，重拾实验！
@@ -918,5 +918,8 @@ mkf文件其实有一个索引表，通过索引表和`uiChunkNum`，就能从mg
 * 仙鹤: 预生成仙鹤坐标，每帧更换坐标
 
   
-# TIPS
+## TIPS
 假如`Navy-apps`出现`address (0x88000120) is out of bound at pc = 0x8300fe98`应该怎么办呢，首先`0x8300fe98`这个地址是镜像的PC，我们是没法对他进行调试的，这时候就应该用`addr2line`，一下子就能得到PC对应的代码行(要开启`-g`选项)，一般是越界了。
+
+## 结尾
+PA3结束，准备进入PA4～

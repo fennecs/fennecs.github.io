@@ -1,9 +1,10 @@
 ---
 title: "PA2"
-date: 2023-03-25T00:38:48+08:00
+date: 2023-04-29T00:44:20+08:00
 draft: false
 slug: 3792c313
 ---
+<!--more-->
 ## 不停计算的机器
 ### 理解YEMU如何执行程序
 
@@ -356,4 +357,4 @@ nested-nemu: io_write(AM_GPU_FBDRAW, ...) -> write to FB_ADDR ->
 ![](/images/20230513232544.png)
 
 ## 结尾
-PA2结束，进入PA3
+PA2结束，进入[PA3](/posts/ics-pa/aa5960ea)
