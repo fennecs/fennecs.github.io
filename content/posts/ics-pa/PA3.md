@@ -100,7 +100,12 @@ index 2f582fe..0a8e950 100644
 顾名思义，`FileSiz`就是数据在文件的大小，`MemSiz`就是数据在内存的大小，前者是已初始化的数据大小，后者包含了未初始化的数据。
 
 ### 为什么要清零?
-如果`[VirtAddr + FileSiz, VirtAddr + MemSiz)`区间的数据如果不清零，就容易被当成有效数据（比如程序把非0即有效数据）
+> 为什么需要将 [VirtAddr + FileSiz, VirtAddr + MemSiz) 对应的物理区间清零?
+
+我想主要是安全问题：
+
+· 这段内存可能有上一个程序的恶意代码
+· 这段内存可能有上一个程序的敏感数据
 
 ### 实现loader
 具体`loader`应该做什么，讲义已经贴出[传送门](https://www.tenouk.com/ModuleW.html)(W.7  PROCESS LOADING)
@@ -337,7 +342,7 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 2. 日志先行
 
 ### 把串口抽象成文件
-⚠️ `stdin`, `stdout`和`stderr`是默认打开的，所以不要在open的时候才对`Finfo`的`read`、`write`成员赋值。
+> **WARNING**: `stdin`, `stdout`和`stderr`是默认打开的，所以不要在open的时候才对`Finfo`的`read`、`write`成员赋值。
 
 ### 实现gettimeofday
 ```c
@@ -497,7 +502,7 @@ size_t fb_write(const void *buf, size_t offset, size_t len) {
   return len;
 }
 ```
-⚠️ 因为`ISA=native`每次打开文件返回的文件描述符是会变的(用了dup)，所以推荐非`regular file`只打开一次，否则有奇奇怪怪的问题。
+> **WARNING**: 因为`ISA=native`每次打开文件返回的文件描述符是会变的(用了dup)，所以推荐非`regular file`只打开一次，否则有奇奇怪怪的问题。
 
 ### 实现居中的画布
 ```c
@@ -620,7 +625,7 @@ if (x == 0 && y == 0 && w == 0 && h == 0) {
     h = screen_h; // h 直接赋值屏幕高度
 } 
 ```
-⚠️ 实现`SDL_PollEvent`时记得在`NONE`的时候要返回`SDL_KEYUP`，否则，由于栈上`SDL_Event`重复使用，按键会一致处于`SDL_KEYDOWN`状态。
+> **WARNING**: 实现`SDL_PollEvent`时记得在`NONE`的时候要返回`SDL_KEYUP`，否则，由于栈上`SDL_Event`重复使用，按键会一致处于`SDL_KEYDOWN`状态。
 
 现象就是：按一次翻页，会直接翻到第一页或最后一页。
 
@@ -629,14 +634,20 @@ if (x == 0 && y == 0 && w == 0 && h == 0) {
 
 #### NTerm
 ##### 实现内建的echo命令
-TODO
+下面有贴代码
 
 #### Flappy Bird
 ![](/images/20230609192943.png)
 
-riscv32-nemu成功运行，但是几乎不能玩，在`ISA=native`可以成功运行。
+riscv32-nemu成功运行，但是几乎不能玩，在`ARCH=native`可以成功运行。
 
-⚠️ 游戏死亡之后没法重开，需要将`navy-apps/apps/bird/repo/src/BirdGame.cpp`里的函数`GameThink_GameOver`static变量`fading_start_time`改为`unsigned int`。
+##### "计算机是个抽象层"的应用: 移植和测试
+移植测试的过程应该在如下环境依次测试  
+
+* Linux native: 直接跑程序，保证客户程序代码是正确的，需要单独一个`Makefile`
+* Navy native: 使用Navy库，测试Navy的**libdnl/libam/libminiSDL/libfixedptc**的实现
+* AM native: 即`ARCH=native`，用`Nanos-lite`引导程序，测试**Nanos-lite/libos**的实现(也可以测klib实现)
+* NEMU: 用NEMU代替硬件，解释执行全部指令
 
 #### PAL
 `ISA=native`一直报这个`core`，
@@ -676,7 +687,7 @@ typedef union {
 SDL_Color color = s->format->palette->colors[pixels[??]];
 ```
 
-⚠️ 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的32位`pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
+> **WARNING**: 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的32位`pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
 ```c
 pixels[i] = color.a << 24 | color.r << 16 | color.g << 8 | color.b;
 ```
@@ -686,7 +697,7 @@ pixels[i] = color.a << 24 | color.r << 16 | color.g << 8 | color.b;
 但是，按键没反应。
 ##### SDL_GetKeyState
 
-看PAL里的实现，监听键盘事件是调用`SDL_PollEvent`直到有事件过来，然后立即调用`SDL_GetKeyState`的到键盘状态。
+看PAL里的实现: 监听键盘事件是调用`SDL_PollEvent`直到有事件过来，然后立即调用`SDL_GetKeyState`的到键盘状态。
 
 根据这个需求，我们应该需要在维护一个键盘状态数组`key_state`，在`SDL_PollEvent`有事件的时候顺便更新`key_state`。
 
@@ -704,5 +715,208 @@ gdb一波，很幸运，很快就发现问题，`SDL_UpdateRect`执行到函数�
 
 ![](/images/20230617005904.png)
 
+> 有些场景不能很好地运行，日后在说。
+
+##### 仙剑奇侠传的框架是如何工作的?
+TODO
+##### 仙剑奇侠传的脚本引擎
+TODO
+##### 不再神秘的秘技
+TODO
+
+#### am-kernels
+假设我们用`ARCH=riscv32-nemu`运行，我们最终调用链路是：
+
+    guest -> libam -> Navy -> Nanos-lite -> AM
+
+兜兜转转还是调用了AM的API，不过`stdlib`的实现就不是自己那套挫逼实现了。(Navy非`native`都是默认依赖`libc`,`libos`的)
+
+##### 实现Navy上的AM
+我们不要一次性实现所有**API/寄存器**，只需要在**API/寄存器**未实现时`panic`就好
+```c
+// navy-apps/libs/libam/src/ioe.c
+
+#include <am.h>
+#include <klib-macros.h>
+
+typedef void (*handler_t)(void *buf);
+static void *lut[128] = {
+//   [AM_TIMER_CONFIG] = __am_timer_config,
+};
+
+static void fail(void *buf) { panic("access nonexist register"); }
+
+bool ioe_init() {
+  for (int i = 0; i < LENGTH(lut); i++)
+    if (!lut[i]) lut[i] = fail;
+  return true;
+}
+
+void ioe_read (int reg, void *buf) { ((handler_t)lut[reg])(buf); }
+void ioe_write(int reg, void *buf) { ((handler_t)lut[reg])(buf); }
+
+```
+> **WARNING**: `navy-apps/libs/libam/src/trm.cpp`先实现，否则`panic`没有日志，也无法退出。
+
+实现过程基本就是调用`NDL`库
+
+> **WARNING**: 实现`__am_input_keybrd`时，`NDL_PollEvent`应该优先判断返回码来决定有没有事件，事实上我们写业务也不能绕过返回码来写代码。
+
+##### 在Navy中运行microbench
+TODO
+
+#### FCEUX
+##### 运行FCEUX
+
+`ISA=native`运行: `fceux-am/Makefile`注释掉`-D__NO_FILE_SYSTEM__`，然后执行在`Navy-apps`里`make ISA=native mainargs=mario.nes`
+
+TODO: `ARCH=native`运行  
+TODO: `ARCH=riscv32-nemu`运行  
+
+##### 如何在Navy上运行Nanos-lite?
+
+我们梳理一下调用链路，如果在Navy上运行`Nanos-lite`, 调用链路是这样的：
+
+    客户程序 -> Navy -> Nanos-lite -> Navy -> `?`
+
+`?`表示下游，Navy作为一个抽象层，客户程序只要调用Navy的API，而API后面的实现无需感知。
+
+要在`Nanos-lite`上运行，客户程序在Navy里编译时不能是`ISA=native`，也就是必须用`libos`的`syscall.c`实现，此时产生的异常会被`am_native`的`sig_hanlder`或者`$ISA-nemu`捕获，最终调用到`user_handler`，执行完毕后回到原来的PC
+
+> 这么一梳理好像不需要任何额外支持，以后试试。
+
+事实上，系统调用不属于任何信号，但是AM还是通过`sig_hanlder`实现了`ARCH=am_native`系统调用的重定向，
+
+`libos`里的关于`am_native`的系统调用是`call`了一个非法地址，然后通过`SIGSEGV`信号捕获系统调用。
+```c
+#if defined(__ISA_X86__)
+...
+#elif defined(__ISA_AM_NATIVE__)
+# define ARGS_ARRAY ("call *0x100000", "rdi", "rsi", "rdx", "rcx", "rax")
+```
+### 基础设施
+#### 自由开关difftest
+`nemu/tools/spike-diff/difftest.cc`里可以看到
+```c
+struct diff_context_t {
+  word_t gpr[32];
+  word_t pc;
+};
+```
+这里只有32个通用寄存器和一个PC，所以给机器寄存器是比较麻烦的。
+
+具体实现: 设置一个全局变量`is_in_difftest_mode`，然后实现下面两个函数：
+* `difftest_detach`: 把`is_in_difftest_mode`置为`false`，然后让`difftest_step()`, `difftest_skip_dut()`和`difftest_skip_ref()`直接返回。
+* `difftest_attach`: 因为每个ISA的机器寄存器不一样，需要在每个ISA实现`isa_difftest_attach`，具体做法是：
+  1. 拷贝通用寄存器和PC
+  3. 拷贝内存`[0x100000, PMEM_SIZE)`,
+  4. 写一段指令给机器寄存器赋值，然后把这段代码送入`REF`，执行这段代码，就可以对齐机器寄存器（好的我不会，用llvm库应该可以实现）
+   
+#### 快照
+在这个实验里，具体要保存的内容：
+1. Context
+2. PC
+3. 堆栈
+4. 打开的文件状态
+
+（日后再说。
+
+### 展示你的批处理系统
+#### 可以运行其它程序的开机菜单
+调用号为`SYS_execve`，没什么特别要注意的
+#### 为NTerm中的內建Shell添加环境变量的支持
+修改`SYS_execve`，如果`path`不是以`/`开头，要从`envp`参数取得`PATH`，获得`value`并和`path`拼接，再调用`naive_load`(这里假设PATH路径只有一个，所以不用`:`分割)。
+
+接下来实现Nterm的`sh_handle_cmd`:
+```c
+#define CMD_ECHO "echo"
+
+static void sh_handle_cmd(const char *cmd) {
+  assert(cmd);
+
+  char *cpy = (char *)malloc(strlen(cmd) + 1);
+  strcpy(cpy, cmd);
+  // remove last return
+  size_t len = strlen(cpy);
+  if (len > 0 && cpy[len-1] == '\n') {
+    cpy[len-1] = '\0';
+  }
+
+  // extract the first token as the command
+  char *cmd_ = strtok(cpy, " ");
+  if (cmd_ == NULL) {
+    free(cpy);
+    return;
+  }
+
+  // lite echo
+  if (strncmp(cmd_, CMD_ECHO, strlen(CMD_ECHO)) == 0) {
+    sh_printf("%s\n", cmd_ + strlen(cmd_) + 1);
+    free(cpy);
+    return;
+  }
+
+  // execve
+  char *argv[20];
+  char *arg;
+  int argc = 0;
+  while ((arg = strtok(NULL, " "))) {
+    argv[argc++] = arg;
+  }
+  argv[argc] = NULL;
+
+  execve(cmd_, argv, environ);
+  perror("execve");
+  free(cpy);
+}
+```
+之后就可以在Nterm里运行
+
+### 终极拷问
+> 当你在终端键入./hello运行Hello World程序的时候, 计算机究竟做了些什么?
+
+这个问题有点像"从浏览器地址栏输入url到请求返回发生了什么"这个经典问题。
+
+### 添加开机音乐
+TODO
+
+### 必答题 - 理解计算机系统
+#### 仙剑奇侠传究竟如何运行
+我们在`<>`里备注当前步骤的运行环境，列出主要的流程。
+
+##### 读取`mgo.mkf`
+mkf文件其实有一个索引表，通过索引表和`uiChunkNum`，就能从mgo.mkf读出像素文件
+
+    PAL_MKFReadChunk<guest> -> seek<libos> -> syscall<libos> 
+                        |    -> trap<NEMU> 
+                        |    -> SYS_read<Nanos-lite> 
+                        |    -> memcpy<AM>
+                        |
+                        |-----> read<libos> -> syscall<libos> 
+                             -> trap<NEMU> 
+                             -> SYS_lseek<Nanos-lite>
+##### 读取键盘事件
+    PAL_ProcessEvent<guest> -> SDL_PollEvent<guest> -> read<libos> -> syscall<libos> 
+                                                    -> trap<NEMU> 
+                                                    -> SYS_read<Nanos-lite> 
+                                                    -> io_read(AM_INPUT_KEYBRD)<AM>
+
+##### 计时
+    SDL_GetTicks<guest> -> gettimeofday<libos> -> syscall<libos> 
+                        -> trap<NEMU>   
+                        -> SYS_gettimeofday<Nanos-lite> 
+                        -> io_read(AM_TIMER_UPTIME)<AM>
+
+##### 更新屏幕
+    VIDEO_UpdateScreen<guest> -> SDL_UpdateRect<guest> -> write<libos> -> syscall<libos>
+                                                       -> trap<NEMU>  
+                                                       -> SYS_write<Nanos-lite>
+                                                       -> io_write(AM_GPU_FBDRAW)<AM>
+
+##### 游戏实现
+* 渐变: 每帧更换一个更亮的调色板
+* 仙鹤: 预生成仙鹤坐标，每帧更换坐标
+
+  
 # TIPS
-假如你`navy-apps`出现`address (0x88000120) is out of bound at pc = 0x8300fe98`应该怎么办呢，首先`0x8300fe98`这个地址是镜像的PC，我们是没法对他进行调试的，这时候就应该用`addr2line`大杀器，一下子就能得到PC对应的代码行(要开启`-g`选项)
+假如`Navy-apps`出现`address (0x88000120) is out of bound at pc = 0x8300fe98`应该怎么办呢，首先`0x8300fe98`这个地址是镜像的PC，我们是没法对他进行调试的，这时候就应该用`addr2line`，一下子就能得到PC对应的代码行(要开启`-g`选项)，一般是越界了。
