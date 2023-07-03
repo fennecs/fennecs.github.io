@@ -132,11 +132,11 @@ String dump of section '.rodata':
 ### 实现ftrace
 > 如果你选择的是riscv32, 你还需要考虑如何从jal和jalr指令中正确识别出函数调用指令和函数返回指令
 
-`jal`和`jalr`指令的`rd`寄存器是`ra`时，可以看作`call`的实现，这是[riscv的调用约定](https://inst.eecs.berkeley.edu/~cs61c/resources/RISCV_Calling_Convention.pdf)
-`jalr`的`rs1`寄存器是`ra`时，可以看作`ret`的实现
+* `jal`和`jalr`指令的`rd`寄存器是`ra`时，可以看作`call`的实现，这是[riscv的调用约定](https://inst.eecs.berkeley.edu/~cs61c/resources/RISCV_Calling_Convention.pdf)
+* `jalr`的`rs1`寄存器是`ra`时，可以看作`ret`的实现
 
 ### 不匹配的函数调用和返回
-递归可能会导致`call`和`ret`不匹配（还没想清楚
+当[尾调用](https://en.wikipedia.org/wiki/Tail_call)优化生效时，可能会导致`call`和`ret`位置不匹配(但次数还是匹配的), 简单地说，因为没有新栈帧的需要，所以直接用跳转指令代替`call`， 接着函数执行完毕后，因为`ra`(返回地址寄存器)存的还是上一个函数的，所以会跨函数返回。
 
 ### 冗余的符号表
 1. 能执行成功
@@ -145,7 +145,7 @@ String dump of section '.rodata':
 链接是需要依靠符号表来定位定位符号的位置，如果没有符号表，如上面的例子，gcc不知道main函数在哪个位置，也就不知道程序的入口应该从哪里开始，无法完成链接。
 
 ### 如何生成native的可执行文件
-以`/am-kernels/tests/cpu-tests/tests/string.c`为例，不同的`ARCH`传入`Makefile`后，可以用于路由到不同的`Makefile`(abstract-machine/scripts)，主要是是编译的源文件有区别。
+以`am-kernels/tests/cpu-tests/tests/string.c`为例，不同的`ARCH`传入`Makefile`后，可以用于路由到不同的`Makefile`(abstract-machine/scripts)，主要是是编译的源文件有区别。
 
 编译`ARCH=native`用的是`gcc`套件，入口就是镜像的`main`，所以`native`不会有NEMU的那些输出(其实`init_platform()` 会比`main`更早执行，因为这个函数标注了`__attribute__((constructor))`)
 

@@ -165,7 +165,9 @@ assert(*(uint32_t *)elf->e_ident == 0x464c457f);
 ### 实现SYS_yield系统调用
 
 ### RISC-V系统调用号的传递
-因为`a0`~`a7`是`calling convention`里传递参数的寄存器，如果用`a0`传递系统调用号会增加设计复杂度。
+因为`a0`-`a7`是`calling convention`里传递参数的寄存器。
+
+在PA4里我们可以看到内核线程传参也是也用到了上下文，如果用`a0`传递系统调用号会增加设计复杂度。
 
 `man syscall`可以看到`Architecture calling conventions`
 
@@ -264,7 +266,7 @@ Hello World from Navy-apps for the 3th time!
 答案是不会，`strace`用到的`printf`是AM的`klib`实现。
 
 ### 支持多个ELF的ftrace
-下次一定。
+就多传几个elf，多解析几次
 
 ## 文件系统
 ### 文件偏移量和用户程序
@@ -653,9 +655,9 @@ riscv32-nemu成功运行，但是几乎不能玩，在`ARCH=native`可以成功�
 移植测试的过程应该在如下环境依次测试  
 
 * Linux native: 直接跑程序，保证客户程序代码是正确的，需要单独一个`Makefile`
-* Navy native: 使用Navy库，测试Navy的**libdnl/libam/libminiSDL/libfixedptc**的实现
-* AM native: 即`ARCH=native`，用`Nanos-lite`引导程序，测试**Nanos-lite/libos**的实现(也可以测klib实现)
-* NEMU: 用NEMU代替硬件，解释执行全部指令
+* Navy native: 使用Navy库，**测试Navy的`libdnl/libam/libminiSDL/libfixedptc`的实现(系统调用是host实现)**
+* AM native: 即`ARCH=native`，用`Nanos-lite`引导程序，**测试`Nanos-lite/libos`的系统调用实现(也可以测`klib`实现)**
+* NEMU: 用NEMU代替硬件，解释执行全部指令，**测试`AM`的实现以及`TRM`的实现。**
 
 #### PAL
 `ISA=native`一直报这个`core`，
@@ -926,4 +928,4 @@ mkf文件其实有一个索引表，通过索引表和`uiChunkNum`，就能从mg
 * 仙鹤: 预生成仙鹤坐标，每帧更换坐标
 
 ## 结尾
-PA3结束，准备进入PA4～
+PA3结束，准备进入[PA4](/posts/ics-pa/fb155443)
