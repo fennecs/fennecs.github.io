@@ -39,55 +39,21 @@ _stack_top = ALIGN(0x1000);   // 将栈顶地址对0x1000对齐
 `trap.S`对32个寄存器和CSR寄存器压栈，形成一个Context结构体，然后跳转到`__am_irq_handle`处理函数
 
 ### 实现正确的事件分发
-`yield`的异常号是`11`，
-
+`yield`的异常号是`11`，系统调用号是`-1`。这是个自定义实现，因为`yield()`函数实现如下:
 ```c
-Context* __am_irq_handle(Context *c) {
-  if (user_handler) {
-    Event ev = {0};
-    switch (c->mcause) {
-      case 11: ev.event = EVENT_YIELD; break;
-      default: ev.event = EVENT_ERROR; break;
-    }
-
-    c = user_handler(ev, c);
-    assert(c != NULL);
-  }
-
-  return c;
+void yield() {
+  asm volatile("li a7, -1; ecall");
 }
 ```
-在`do_event`函数里打印一下
-```c
-static Context* do_event(Event e, Context* c) {
-  switch (e.event) {
-    case EVENT_YIELD: printf("EVENT_YIELD\n"); break;
-    default: panic("Unhandled event ID = %d", e.event);
-  }
 
-  return c;
-}
-```
 ### 从加4操作看CISC和RISC
-由软件来做的话，这其实相当于`calling convention`，需要编译器提供支持。谁好谁坏我也说不出来。
+个人觉得交给软件做合适，CPU只负责执行指令，软件负责控制逻辑。
+
+### 恢复上下文
+`__am_irq_handle`当异常号为`11`时，`mepc`+4
 
 ### 必答题(需要在实验报告中回答) - 理解穿越时空的旅程
-(续)`__am_irq_handle`处理完毕之后，需要从`Context`恢复`mpec`的值到PC，注意这个值需要加4，否则程序又会继续自陷。
 
-```diff
-diff --git a/abstract-machine/am/src/riscv/nemu/trap.S b/abstract-machine/am/src/riscv/nemu/trap.S
-index 2f582fe..0a8e950 100644
---- a/abstract-machine/am/src/riscv/nemu/trap.S
-+++ b/abstract-machine/am/src/riscv/nemu/trap.S
-@@ -53,6 +53,7 @@ __am_asm_trap:
-   LOAD t1, OFFSET_STATUS(sp)
-   LOAD t2, OFFSET_EPC(sp)
-   csrw mstatus, t1
-+  addi t2, t2, 4
-   csrw mepc, t2
- 
-   MAP(REGS, POP)
-```
 ## 用户程序和系统调用
 ### 堆和栈在哪里
 （好像前面问过了？
@@ -795,13 +761,11 @@ TODO: `ARCH=riscv32-nemu`运行
 
 `?`表示下游，Navy作为一个抽象层，客户程序只要调用Navy的API，而API后面的实现无需感知。
 
-要在`Nanos-lite`上运行，客户程序在Navy里编译时不能是`ISA=native`，也就是必须用`libos`的`syscall.c`实现，此时产生的异常会被`am_native`的`sig_hanlder`或者`$ISA-nemu`捕获，最终调用到`user_handler`，执行完毕后回到原来的PC
+要在`Nanos-lite`上运行，客户程序在Navy里编译时不能是`ISA=native`，也就是必须用`libos`的`syscall.c`实现，此时产生的异常会被`am_native`的`sig_hanlder`或者`$ISA-nemu`捕获，最终调用到`user_handler`，执行完毕后恢复上下文回到原来的PC。
 
 > 这么一梳理好像不需要任何额外支持，以后试试。
 
-事实上，系统调用不属于任何信号，但是AM还是通过`sig_hanlder`实现了`ARCH=am_native`系统调用的重定向，
-
-`libos`里的关于`am_native`的系统调用是`call`了一个非法地址，然后通过`SIGSEGV`信号捕获系统调用。
+事实上，系统调用不属于任何信号，但是AM还是通过`sig_hanlder`实现了`ARCH=am_native`系统调用的重定向，`libos`里的关于`am_native`的系统调用是`call`了一个非法地址，然后通过`SIGSEGV`信号捕获系统调用。同时也没有`trap.S`代码，trap是在`abstract-machine/am/src/native/cte.c`里用`setup_stack`函数实现的。
 ```c
 #if defined(__ISA_X86__)
 ...
