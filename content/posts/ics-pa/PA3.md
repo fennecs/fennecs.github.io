@@ -112,11 +112,7 @@ assert(*(uint32_t *)elf->e_ident == 0x464c457f);
 #endif
 ```
 ### 将Nanos-lite编译到native
-既然是`native`，解释器就不是`nemu`了，镜像也不是`riscv32`了，但是你运行之后，还是还能看到`strace`日志，说明这一切都是解耦的！
-
-还记得`trap.S`里的`+4`行为吗，如果这个动作是放在`nanos-lite`里实现的，你在不同架构之间切换就会遇到编译失败的问题。举个例子，`riscv`的`Context`有`mepc`，但是`native`是没有的。
-
-所以`nanos-lite`的实现应该是架构无关的，我们切换到`native`后，就可以专心用`gdb`调试我们的`nanos-lite`实现了
+`nanos-lite`的实现应该是架构无关的，我们切换到`native`后，就可以专心用`gdb`调试我们的`nanos-lite`实现了
 
 ### 系统调用的必要性
 不是必须，因为批处理系统的程序是串行执行的，不会存在资源抢占情况。
