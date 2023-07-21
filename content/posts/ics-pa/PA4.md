@@ -9,14 +9,12 @@ slug: fb155443
 `PCB`在linux里就是`task_struct`, PA的`PCB`里的匿名结构体就是`thread_info`
 
 ## 多道程序
-### 其实我在骗你!
-TODO
 
 ### 为什么需要使用不同的栈空间
 如果是批处理系统就可以用相同的栈空间. 但是我们加入了上下文切换, 如果共享栈空间，进程切换的时候就会互相破坏. 当然, 这里的栈空间是指物理空间。
 
 ### 为什么不叫"内核进程"?
-因为在内核里，进程和线程的结构体都是`task_struct`，他们都是`clone()`调用生成的. 至于**"线程更加轻量级"**体现在切换上是由线程库切换，**"线程没有独立的资源"**体现在和进程共享内存.
+因为在内核里，进程和线程的结构体都是`task_struct`，他们都是`clone()`调用生成的. 至于 **"线程更加轻量级"** 体现在切换上是由线程库切换，**"线程没有独立的资源"** 体现在和进程共享内存.
 
 ### 实现上下文切换
 #### kcontext
@@ -95,7 +93,7 @@ Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
   return c;
 }
 ```
-### context_uload
+#### context_uload
 ```c
 void context_uload(PCB *pcb, const char *filename) {
   AddrSpace addr;
@@ -105,7 +103,7 @@ void context_uload(PCB *pcb, const char *filename) {
   pcb->cp->GPRx = (uintptr_t) heap.end;
 }
 ```
-### _start
+#### _start
 `navy-apps/libs/libos/src/crt0/start/riscv32.S`插入如下:
 
     mv sp, a0
@@ -248,7 +246,7 @@ Sv32的va、pa、PTE结构
 > 回顾一下, 最开始实现的用户栈是直接用`TRM`的`heap`物理地址, 后来由`new_page`管理, 再到后来由MMU管理, 先驱真伟大! 
 
 #### loader
-编译Navy的时候记得加上`VME=1`把用户虚拟空间变成`0x40000000`，这么做的原因是: `0x80000000-0x88000000`是属于内核虚拟空间，虚拟空间不应该和用户虚拟空间有重叠.(TODO: WHY?)
+编译Navy的时候记得加上`VME=1`把用户虚拟空间变成`0x40000000`，这么做的原因是: `0x80000000-0x88000000`是属于内核虚拟空间，不应该和用户虚拟空间有重叠. 因为用户空间包含了内核空间的映射, 如果有重叠就变的不可维护了.
 
 > AM上的程序的物理空间从`_pmem_start`符号开始, 在上面分配`.text`和`.data`之后的到一个`end`/`_end`符号, 然后从这里开始作为`heap.start`(按页向上取整), 使用`new_page`分配物理空间，最多可以分配到`_pmem_start + 0x8000000`.
 
@@ -349,6 +347,8 @@ int trap_from_user = __am_in_userspace(rip);
 
 解决办法是第一次进入CTE就把`pp`改为`KERNEL`.
 
+> 判断重入的常用做法就是写标志位.
+
 ### 一些优化
 为什么要优化呢, 这里的优化就是复用寄存器。因为寄存器是宝贵资源, 能不引入新的寄存器就不引入.
 
@@ -363,7 +363,161 @@ int trap_from_user = __am_in_userspace(rip);
 > 既然选择riscv32肯定要说riscv的好啊
 
 ### 实现内核栈和用户栈之间的切换
-TODO
+现在才发现保存/恢复上下文的寄存器漏掉了零寄存器和`sp`
+```c
+// abstract-machine/am/src/riscv/nemu/trap.S
+#define REGS(f) \
+      f( 1)       f( 3) f( 4) f( 5) f( 6) f( 7) f( 8) f( 9) \
+...
+```
+零寄存器就不用说了, 就说为什么没有`sp`. 原来的设计中, Context是保存在同一个栈的, 所以只要找到了Context指针, 就是找到了sp. 现在加入了栈切换, 为了从内核栈恢复中断时能找到用户栈的`sp`, 所以要额外保存`sp`: `STORE [REG], OFFSET_SP(sp)`, 随便找个临时寄存器存下
+
+riscv架构中, `mscratch`寄存器是一个系统软件用的临时寄存器, 一般被用于临时存放`ksp`, 那么多个进程有多个内核栈, 只有一个`mscratch`够吗? 其实是够的. 这个用状态机的视角去论证即可, 然后你就会发现`mscratch`只会有两个取值, 第一种是`kstack.end`, 第二种是`0`. 当进入`__am_asm_trap`时, 如果`ksp != 0`, 那么这个进程必定是刚从`np = USER`状态恢复而来, `mscratch`也必定刚被恢复为内核栈底, 所以`mscratch`只需要一个, 他只要用于暂存内核栈底即可.
+
+#### trap.S
+主要就是改这里
+```c
+#define concat_temp(x, y) x ## y
+#define concat(x, y) concat_temp(x, y)
+#define MAP(c, f) c(f)
+
+#if __riscv_xlen == 32
+#define LOAD  lw
+#define STORE sw
+#define XLEN  4
+#else
+#define LOAD  ld
+#define STORE sd
+#define XLEN  8
+#endif
+
+#define USER 0
+#define KERNEL 1
+
+#define REGS(f) \
+      f( 1)       f( 3) f( 4) f( 5) f( 6) f( 7) f( 8) f( 9) \
+f(10) f(11) f(12) f(13) f(14) f(15) f(16) f(17) f(18) f(19) \
+f(20) f(21) f(22) f(23) f(24) f(25) f(26) f(27) f(28) f(29) \
+f(30) f(31)
+
+#define PUSH(n) STORE concat(x, n), (n * XLEN)(sp);
+#define POP(n)  LOAD  concat(x, n), (n * XLEN)(sp);
+
+#define CONTEXT_SIZE  ((32 + 4 + 1) * XLEN)
+#define OFFSET_SP     ( 2 * XLEN)
+#define OFFSET_CAUSE  (32 * XLEN)
+#define OFFSET_STATUS (33 * XLEN)
+#define OFFSET_EPC    (34 * XLEN)
+#define OFFSET_NP     (35 * XLEN)
+
+.align 3
+.globl __am_asm_trap
+.globl g_np
+
+__am_asm_trap:
+  csrrw sp, mscratch, sp   // swap($sp, ksp)
+  bnez sp, save_np_user    // if (ksp != 0) sp = ksp; np is USER
+  csrr sp, mscratch        // ksp is 0(特殊值), revert sp
+
+save_np_kernel:
+  addi sp, sp, -2*XLEN     // push-----------------------
+  STORE t0, 0(sp)          // push t0
+  STORE t1, XLEN(sp)       // push t1
+
+  lui t0, KERNEL
+  la t1, g_np              // load g_np address
+  STORE t0, 0(t1)          // store np to g_np
+
+  LOAD t0, 0(sp)           // pop t0
+  LOAD t1, XLEN(sp)        // pop t1
+  addi sp, sp, 2*XLEN      // pop------------------------
+  j save_context
+
+save_np_user:
+  addi sp, sp, -2*XLEN     // push-----------------------
+  STORE t0, 0(sp)          // push t0
+  STORE t1, XLEN(sp)       // push t1
+
+  lui t0, USER
+  la t1, g_np              // load g_ksp address
+  STORE t0, 0(t1)          // store np to g_np
+
+  LOAD t0, 0(sp)           // pop t0
+  LOAD t1, XLEN(sp)        // pop t1
+  addi sp, sp, 2*XLEN      // pop------------------------
+
+save_context:
+  addi sp, sp, -CONTEXT_SIZE
+
+  MAP(REGS, PUSH)
+
+  csrr t0, mcause
+  csrr t1, mstatus
+  csrr t2, mepc
+  csrr t3, mscratch        // t3 = sp (1)步骤把入口sp放到这里了。
+
+  STORE t0, OFFSET_CAUSE(sp)
+  STORE t1, OFFSET_STATUS(sp)
+  STORE t2, OFFSET_EPC(sp)
+  STORE t3, OFFSET_SP(sp)  // c->sp = $sp;
+
+  la t0, g_np              // load g_np address
+  LOAD t0, 0(t0)           // g_np
+  STORE t0, OFFSET_NP(sp)  // c->np = np
+
+  # set mstatus.MPRV to pass difftest
+  li a0, (1 << 17)
+  or t1, t1, a0
+  csrw mstatus, t1
+
+  mv a0, sp
+  jal __am_irq_handle
+  mv sp, a0                           // The Context is always on the kernel stack.
+                                      // So $sp must be on the kernel stack.
+
+  LOAD t1, OFFSET_STATUS(sp)
+  LOAD t2, OFFSET_EPC(sp)
+  csrw mstatus, t1
+  csrw mepc, t2
+
+  LOAD t1, OFFSET_NP(sp)
+  bnez t1, restore_ctx                 // np is KERNEL, jump to restore_ctx
+
+  addi t2, sp, CONTEXT_SIZE            // ksp = $sp + CONTEXT_SIZE when return to USER
+  csrw mscratch, t2                    // restore ksp
+
+restore_ctx:
+  MAP(REGS, POP)
+
+  // addi sp, sp, CONTEXT_SIZE         // no need to exec this
+
+  LOAD sp,  OFFSET_SP(sp)              // $sp  = c->sp; this is the trap sp
+
+  mret
+
+```
+主要就是加上`sp`的保存和还原. 因为PUSH现场之后, 所有寄存器都会被覆盖, 所以用了一个全局变量来存`np`(感觉不太合理, 不过讲义是这么说的)
+
+#### kcontext
+因为要用到Context里的`sp`, `np`, 所以我们还得给kcontext初始化`sp`和`np`
+```c
+Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
+  ...
+  c->np = KERNEL;
+  c->gpr[2] = (uintptr_t)kstack.end; // sp
+  return c;
+}
+```
+#### ucontext
+同`kcontext`, `ucontext`也需要初始化
+```c
+Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
+  ...
+  c->np = USER;
+  c->gpr[2] = (uintptr_t)as->area.end; // sp
+  ...
+}
+```
 
 ### Nanos-lite与并发bug (建议二周目/学完操作系统课思考)
 不会有并发bug. 首先目前CTE的(MIE)被关, 因此`mm_brk`可以看作一个原子的过程(不会被中断). 其次两个用户进程有独立的物理空间, 他们的buffer都是隔离的.
@@ -374,6 +528,23 @@ TODO
 TODO 来日方长
 
 ## 后记
-到这里主线已经做完了. 通过这个PA, 最终实现了一个轻量的操作系统, 支持画面输出、系统时间、键盘事件、异常/中断、多道程序、进城切换、内核线程、虚拟内存、DEBUG等等等, 从系统调用到硬件指令一条龙模拟。
+到这里主线已经做完了. 通过这个PA, 最终实现了一个轻量的操作系统, 支持:
 
-好几次想放弃这个实验, 最后还是坚持了下来🌈
+* 画面输出
+* 系统时间
+* 键盘事件
+* 简易stdlib
+* 异常/中断
+* 多道程序
+* 进程切换
+* 进程调度
+* 内核线程
+* 虚拟内存
+* DEBUG功能
+* 内核栈/用户栈切换
+* 等等等
+* TODO MORE
+  
+从系统调用到硬件指令一条龙模拟。
+
+好几次想放弃这个实验, 最后还是坚持了下来🌈受益匪浅, 感谢NJU开放这个实验. 准备再战[操作系统](https://jyywiki.cn/OS/2022/)
