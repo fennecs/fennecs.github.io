@@ -296,13 +296,15 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 ```
 其实就是把`ramdisk_read`替换为`fs_lseek`和`fs_read`调用。
 
+> Nanos-lite直接把文件编译进二进制了, 并放到了内存指定位置.
+
 ### 实现完整的文件系统
 记得把用户层的系统调用补上。。。(navy-apps/libs/libos/src/syscall.c)
 
 因为用户层的系统调用默认实现是直接`exit`，TM找了我半天；恰巧我的`strace`日志是调用后才打印，所以`exit`时来不及打日志，什么都观察不到没有就退出了。
 
 这说明: 
-1. 业务开发不要随便`exit`，不得不用时请在`exit`之前打印日志。
+1. 不要随便`exit`，不得不用时请在`exit`之前打印日志。
 2. 日志先行
 
 ### 把串口抽象成文件
@@ -658,8 +660,8 @@ typedef union {
 ```c
 SDL_Color color = s->format->palette->colors[pixels[??]];
 ```
+因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的32位`pixels`的格式为`AARRGGBB`(项目搜索`SDL_PIXELFORMAT_ARGB8888`). 所以`SDL_Color`需要做下转换. 如何确定我们需要的
 
-> **WARNING**: 因为`SDL_Color`的结构体成员是`r, g, b, a`排序的，而我们要的32位`pixels`的格式为`00RRGGBB`，所以`SDL_Color`需要做下转换
 ```c
 pixels[i] = color.a << 24 | color.r << 16 | color.g << 8 | color.b;
 ```

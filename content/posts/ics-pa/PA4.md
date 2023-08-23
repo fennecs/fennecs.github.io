@@ -340,7 +340,7 @@ int trap_from_user = __am_in_userspace(rip);
 
 因此在`np`、`usp`会变的情况下, 为了防止旧值丢失, 需要把他们存入Context保存起来.
 
-而`pp`、`ksp`值在被`__am_irq_handle`使用后会被覆盖, 所以在`__am_irq_handle`前可以被随意赋值. 这两个状态类似`caller saved registers`, 无论中间更新多少次, 只要最后能恢复为正确的值即可.
+而`pp`、`ksp`值在被`__am_irq_handle`使用后会被覆盖, 所以在`__am_irq_handle`前可以被随意赋值. 这两个状态类似`caller saved registers`, 无论中间更新多少次, 只要最后能恢复为正确的值即可. (或者说像DP问题的状态压缩)
 
 ### 系统的复杂性(3)
 问题在于`pp`值在没有改变. 假如`pp == USER`, 那么无论嵌套CTE多少次, `__am_irq_handle`看到的`pp`还是`USER`, 而我们的预期是从第一次嵌套开始`pp`就是`KERNEL`了.
@@ -351,9 +351,6 @@ int trap_from_user = __am_in_userspace(rip);
 
 ### 一些优化
 为什么要优化呢, 这里的优化就是复用寄存器。因为寄存器是宝贵资源, 能不引入新的寄存器就不引入.
-
-### 操作系统和中断
-最常见的问题就是在没关中断的情况下, 在中断上下文里持有锁然后挂起, 这时很容易就造成死锁.
 
 ### 临时寄存器的方案
 通过引入`mscratch`寄存器可以减少软件工作量. riscv设计美学就是通过增加硬件工作量, 减少软件工作量.
