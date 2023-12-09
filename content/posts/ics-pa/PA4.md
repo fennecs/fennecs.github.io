@@ -517,9 +517,9 @@ Context *ucontext(AddrSpace *as, Area kstack, void *entry) {
 ```
 
 ### Nanos-lite与并发bug (建议二周目/学完操作系统课思考)
-不会有并发bug. 首先目前CTE的(MIE)被关, 因此`mm_brk`可以看作一个原子的过程(不会被中断). 其次两个用户进程有独立的物理空间, 他们的buffer都是隔离的.
+不会有并发bug. 首先目前CTE的(MIE)被关, 虽然`mm_brk`没有加锁, 但是可以看作一个原子的过程(不会被中断). 
 
-事实上glibc的`printf`的实现是上了互斥锁的, 虽然多进程不会有并发问题, 但是多线程就有了. 所以我们生产环境也不推荐用`printf`输出日志.
+其次两个用户进程有独立的物理空间, 他们的buffer都是隔离的, 不会出现进程A的buffer覆写进程B的buffer.
 
 ## 编写不朽的传奇
 TODO 来日方长
