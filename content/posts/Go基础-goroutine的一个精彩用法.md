@@ -7,6 +7,7 @@ categories:
   - Golang基础
 slug: 3042075373
 date: 2018-07-22 21:03:00
+draft: true
 ---
 > 这是一个利用goroutine输出素数的一个算法，找个时间写个java版的实现...
 

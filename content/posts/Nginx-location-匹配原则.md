@@ -7,6 +7,7 @@ categories:
   - 服务器
 slug: 3180078468
 date: 2018-03-10 15:16:00
+draft: true
 ---
 Location block 的基本语法形式是：`location [=|~|~*|^~|@] pattern { ... }`
 

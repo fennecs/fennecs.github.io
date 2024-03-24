@@ -7,6 +7,7 @@ categories:
   - Golang基础
 slug: 2747343217
 date: 2018-09-28 14:48:00
+draft: true
 ---
 > 摘抄自小米运维
 

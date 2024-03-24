@@ -7,6 +7,7 @@ categories:
   - Spring
 slug: 298553133
 date: 2018-03-10 15:06:00
+draft: true
 ---
 # 通过&lt;context:property-placeholder location="classpath:conn.properties" &gt;
 ```xml

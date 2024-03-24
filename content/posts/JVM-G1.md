@@ -8,6 +8,7 @@ categories:
   - Java基础
 slug: 2687941502
 date: 2018-04-02 17:23:00
+draft: true
 ---
 不得不说G1有点难理解
 <!--more-->

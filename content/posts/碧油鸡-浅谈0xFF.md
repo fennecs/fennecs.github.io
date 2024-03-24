@@ -119,7 +119,7 @@ java.io.FilterOutputStream.PrintStream最初的目的是为了以可视化格式
 
 	00000000 00000000 00000000 00000000 10000000 xxxxxxxx xxxxxxxx xxxxxxxx
 
-这时候我们就要一把剪刀`& 0x00000000FFFFFFFFL`来剪一下，得到我们的期望数。
+这时候我们就要一把剪刀`& 0x00000000FFFFFFFF`来剪一下，得到我们的期望数。
 
 # 题外话
 既然我们的`DataOutputstrem`是要write一个byte，为什么要用`int`入参引来一把剪刀的麻烦，其实是java没有无符号数的麻烦。  

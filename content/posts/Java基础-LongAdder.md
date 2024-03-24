@@ -7,6 +7,7 @@ categories:
   - Java基础
 slug: 973885938
 date: 2018-03-13 10:07:00
+draft: true
 ---
 # 前言
 LongAdder是jdk8新增的用于并发环境的计数器，目的是为了在高并发情况下，代替AtomicLong/AtomicInt，成为一个用于高并发情况下的高效的通用计数器。

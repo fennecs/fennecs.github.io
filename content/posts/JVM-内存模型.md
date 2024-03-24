@@ -6,6 +6,7 @@ categories:
   - Java基础
 slug: 93872510
 date: 2020-03-17 14:28:45
+draft: true
 ---
 补个内存模型笔记。
 <!--more-->

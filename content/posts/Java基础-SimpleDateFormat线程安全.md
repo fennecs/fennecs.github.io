@@ -6,6 +6,7 @@ categories:
 title: '[Java基础]SimpleDateFormat线程安全的问题'
 slug: 3683368056
 date: 2018-12-25 18:19:00
+draft: true
 ---
 > 今天把`SimpleDateFormat`设置为`static`，老哥说你错了，你真的错了。
 

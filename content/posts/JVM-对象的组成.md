@@ -8,6 +8,7 @@ categories:
   - Java基础
 slug: 2006878642
 date: 2018-03-22 22:23:00
+draft: true
 ---
 > 基于Hotspot，我们给自己一个对象 :(
 

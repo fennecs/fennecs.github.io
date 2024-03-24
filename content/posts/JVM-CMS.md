@@ -7,6 +7,7 @@ categories:
   - Java基础
 slug: 4242301031
 date: 2018-04-02 08:20:00
+draft: true
 ---
 # 什么是CMS
 Concurrent Mark Sweep。看名字就知道，CMS是一款并发、使用标记-清除算法的gc。CMS是针对老年代进行回收的GC。

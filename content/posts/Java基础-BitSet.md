@@ -7,6 +7,7 @@ categories:
   - Java基础
 slug: 4146306917
 date: 2018-03-13 10:02:00
+draft: true
 ---
 # BitSet类
 大小可动态改变, 取值为true或false的位集合。用于表示一组布尔标志。 

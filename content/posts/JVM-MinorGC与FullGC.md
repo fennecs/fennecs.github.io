@@ -8,6 +8,7 @@ categories:
   - Java基础
 slug: 527051980
 date: 2018-04-02 08:11:00
+draft: true
 ---
 
 # Minor GC？Full GC？

@@ -7,6 +7,7 @@ categories:
   - Java基础
 slug: 2850894714
 date: 2018-05-09 15:37:00
+draft: true
 ---
 > String.replaceAll和String.replace的区别是，String.replaceAll使用的匹配模式是正则表达式。但是第二参数`replacement`不是简单的字符串，里面有点特殊的东西。
 

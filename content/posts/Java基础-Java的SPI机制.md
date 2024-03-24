@@ -1,3 +1,4 @@
+---
 title: '[Java基础]Java的SPI机制'
 author: 土川
 slug: 754409717
@@ -6,6 +7,7 @@ tags:
 categories:
   - Java基础
 date: 2018-11-29 16:04:00
+draft: true
 ---
 # 为什么要SPI
 SPI, Service Provider Interface, 简单来说就是调用方提供接口，接入方提供实现。比如一个应用程序调用JDBC的接口，你要是使用mysql，就得提供mysql提供的jdbc实现。这和我们定义**接口**然后写**实现类**差不多，只不过**实现类**是可以在jar/war外提供。

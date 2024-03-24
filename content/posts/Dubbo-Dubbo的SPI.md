@@ -1,3 +1,4 @@
+---
 tags:
   - OOP
 categories:
@@ -5,6 +6,7 @@ categories:
 title: '[Dubbo]Dubbo SPI 机制'
 slug: 2436052280
 date: 2019-03-25 11:44:00
+draft: true
 ---
 # 前言
 之前一篇[[Java基础]Java的SPI机制](/754409717.html)讲到Java spi的缺陷是在查找所需实现的时候，会实例化无关的实现，那么这篇看看Dubbo是怎么规避这个问题的。

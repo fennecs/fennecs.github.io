@@ -3,12 +3,11 @@ title: '[Go基础]Go defer的那些坑'
 author: 土川
 tags:
   - 坑
-  - ''
 categories:
   - Golang基础
-  - ''
 slug: 3084756888
 date: 2018-06-25 01:07:00
+draft: true
 ---
 > Go defer的那些坑不得不踩一下才爽
 

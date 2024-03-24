@@ -6,6 +6,7 @@ categories:
   - Proxy
 slug: 3922793788
 date: 2019-03-10 14:03:00
+draft: true
 ---
 # Cglib
 > CGLIB是一个强大的高性能的代码生成包。CGLIB包的底层是通过使用一个小而快的字节码处理框架ASM，来转换字节码并生成新的类。除了CGLIB包，脚本语言例如Groovy和BeanShell，也是使用ASM来生成java的字节码。当然不鼓励直接使用ASM，因为它要求你必须对JVM内部结构包括class文件的格式和指令集都很熟悉。
